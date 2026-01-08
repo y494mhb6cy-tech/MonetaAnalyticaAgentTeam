@@ -2,156 +2,237 @@
   "root": {
     "id": "root-moneta",
     "name": "Moneta Analytica",
-    "type": "root",
+    "kind": "orgUnit",
     "status": "Operational",
-    "owner": "Executive Office",
-    "description": "Enterprise-wide agent mesh for profit expansion, process rigor, and objective output."
+    "ownerTitle": "Executive Office",
+    "description": "Enterprise capability mesh for profit expansion, process rigor, and objective output."
   },
-  "groups": [
+  "orgUnits": [
     {
-      "id": "group-finance",
+      "id": "org-finance",
+      "kind": "orgUnit",
       "name": "Finance",
       "status": "Scaling",
-      "owner": "CFO",
+      "ownerTitle": "Chief Financial Officer",
       "description": "Capital strategy, planning, and financial intelligence."
     },
     {
-      "id": "group-ops",
+      "id": "org-ops",
+      "kind": "orgUnit",
       "name": "Operations",
       "status": "Operational",
-      "owner": "COO",
+      "ownerTitle": "Chief Operating Officer",
       "description": "Delivery orchestration, tooling, and execution readiness."
     },
     {
-      "id": "group-hr",
+      "id": "org-people",
+      "kind": "orgUnit",
       "name": "People",
       "status": "Focused",
-      "owner": "Chief People Officer",
+      "ownerTitle": "Chief People Officer",
       "description": "Talent systems, incentives, and org health."
     }
   ],
-  "agents": [
+  "modules": [
     {
-      "id": "agent-fin-01",
-      "groupId": "group-finance",
-      "name": "Margin Sentinel",
+      "id": "module-margin",
+      "kind": "module",
+      "name": "Margin Intelligence",
+      "domain": "Finance",
+      "orgUnitId": "org-finance",
+      "ownerPersonId": "person-ava",
       "status": "Active",
-      "owner": "Ava Chen",
       "description": "Tracks margin delta across product lines and flags leakage.",
-      "runs": [
-        { "id": "run-fin-1", "title": "Weekly margin pulse", "date": "2024-05-06", "status": "Completed" },
-        { "id": "run-fin-2", "title": "SKU profitability snapshot", "date": "2024-05-04", "status": "Completed" }
+      "outputs": [
+        { "id": "output-margin-1", "title": "Margin Pulse Brief", "type": "pdf" }
       ],
-      "artifacts": [
-        { "id": "artifact-fin-1", "name": "Margin Pulse Brief", "type": "pdf", "date": "2024-05-06" }
+      "steps": [
+        { "id": "step-margin-1", "title": "Ingest SKU ledger" },
+        { "id": "step-margin-2", "title": "Detect variance bands", "qaRequired": true }
+      ],
+      "activity": [
+        { "id": "activity-margin-1", "title": "Weekly margin pulse", "date": "2024-05-06", "status": "Completed" },
+        { "id": "activity-margin-2", "title": "SKU profitability snapshot", "date": "2024-05-04", "status": "Completed" }
       ]
     },
     {
-      "id": "agent-fin-02",
-      "groupId": "group-finance",
-      "name": "Forecast Architect",
+      "id": "module-forecast",
+      "kind": "module",
+      "name": "Forecast Studio",
+      "domain": "Finance",
+      "orgUnitId": "org-finance",
+      "ownerPersonId": "person-priya",
       "status": "Active",
-      "owner": "Priya Singh",
       "description": "Builds rolling forecasts and scenario plans.",
-      "runs": [
-        { "id": "run-fin-3", "title": "Q3 forecast refresh", "date": "2024-05-05", "status": "Completed" }
+      "outputs": [
+        { "id": "output-forecast-1", "title": "Scenario Deck", "type": "pptx" }
       ],
-      "artifacts": [
-        { "id": "artifact-fin-2", "name": "Forecast Scenarios", "type": "docx", "date": "2024-05-05" }
+      "steps": [
+        { "id": "step-forecast-1", "title": "Assemble demand signals" },
+        { "id": "step-forecast-2", "title": "Publish rolling outlook" }
+      ],
+      "activity": [
+        { "id": "activity-forecast-1", "title": "Q3 forecast refresh", "date": "2024-05-05", "status": "Completed" }
       ]
     },
     {
-      "id": "agent-fin-03",
-      "groupId": "group-finance",
-      "name": "Risk Auditor",
+      "id": "module-risk",
+      "kind": "module",
+      "name": "Risk & Compliance",
+      "domain": "Finance",
+      "orgUnitId": "org-finance",
+      "ownerPersonId": "person-leo",
       "status": "Idle",
-      "owner": "Leo Martinez",
       "description": "Audits vendor risk and contract exposure.",
-      "runs": [],
-      "artifacts": []
+      "outputs": [],
+      "steps": [
+        { "id": "step-risk-1", "title": "Assess contract exposure" }
+      ],
+      "activity": []
     },
     {
-      "id": "agent-ops-01",
-      "groupId": "group-ops",
-      "name": "Launch Pilot",
+      "id": "module-launch",
+      "kind": "module",
+      "name": "Launch Readiness",
+      "domain": "Ops",
+      "orgUnitId": "org-ops",
+      "ownerPersonId": "person-nora",
       "status": "Active",
-      "owner": "Nora Park",
       "description": "Coordinates launch readiness checklists and cross-team alignment.",
-      "runs": [
-        { "id": "run-ops-1", "title": "Launch readiness 5/05", "date": "2024-05-05", "status": "Completed" }
+      "outputs": [
+        { "id": "output-launch-1", "title": "Launch Brief", "type": "pdf" }
       ],
-      "artifacts": [
-        { "id": "artifact-ops-1", "name": "Launch Brief", "type": "pdf", "date": "2024-05-05" }
+      "steps": [
+        { "id": "step-launch-1", "title": "Align release gates" },
+        { "id": "step-launch-2", "title": "Run executive review", "qaRequired": true }
+      ],
+      "activity": [
+        { "id": "activity-launch-1", "title": "Launch readiness 5/05", "date": "2024-05-05", "status": "Completed" }
       ]
     },
     {
-      "id": "agent-ops-02",
-      "groupId": "group-ops",
-      "name": "Quality Marshal",
+      "id": "module-quality",
+      "kind": "module",
+      "name": "Quality Signals",
+      "domain": "Ops",
+      "orgUnitId": "org-ops",
+      "ownerPersonId": "person-omar",
       "status": "Active",
-      "owner": "Omar Hayes",
       "description": "Detects process drift and coordinates fixes.",
-      "runs": [
-        { "id": "run-ops-2", "title": "QC drift scan", "date": "2024-05-03", "status": "Completed" }
+      "outputs": [],
+      "steps": [
+        { "id": "step-quality-1", "title": "Monitor drift alerts" }
       ],
-      "artifacts": []
-    },
-    {
-      "id": "agent-ops-03",
-      "groupId": "group-ops",
-      "name": "Vendor Relay",
-      "status": "Paused",
-      "owner": "Jin Lee",
-      "description": "Manages vendor SLAs and escalation pathways.",
-      "runs": [],
-      "artifacts": []
-    },
-    {
-      "id": "agent-hr-01",
-      "groupId": "group-hr",
-      "name": "Talent Pulse",
-      "status": "Active",
-      "owner": "Maya Ortiz",
-      "description": "Synthesizes engagement signals and retention risk.",
-      "runs": [
-        { "id": "run-hr-1", "title": "Engagement pulse", "date": "2024-05-02", "status": "Completed" }
-      ],
-      "artifacts": [
-        { "id": "artifact-hr-1", "name": "Engagement Brief", "type": "pdf", "date": "2024-05-02" }
+      "activity": [
+        { "id": "activity-quality-1", "title": "QC drift scan", "date": "2024-05-03", "status": "Completed" }
       ]
     },
     {
-      "id": "agent-hr-02",
-      "groupId": "group-hr",
-      "name": "Comp Strategist",
-      "status": "Active",
-      "owner": "Ethan Cole",
-      "description": "Aligns compensation bands to market data.",
-      "runs": [
-        { "id": "run-hr-2", "title": "Band calibration", "date": "2024-05-01", "status": "Completed" }
+      "id": "module-vendor",
+      "kind": "module",
+      "name": "Vendor Reliability",
+      "domain": "Ops",
+      "orgUnitId": "org-ops",
+      "ownerPersonId": "person-jin",
+      "status": "Paused",
+      "description": "Manages vendor SLAs and escalation pathways.",
+      "outputs": [],
+      "steps": [
+        { "id": "step-vendor-1", "title": "Track SLA health" }
       ],
-      "artifacts": []
+      "activity": []
     },
     {
-      "id": "agent-hr-03",
-      "groupId": "group-hr",
-      "name": "Hiring Navigator",
+      "id": "module-talent",
+      "kind": "module",
+      "name": "Talent Pulse",
+      "domain": "People",
+      "orgUnitId": "org-people",
+      "ownerPersonId": "person-maya",
+      "status": "Active",
+      "description": "Synthesizes engagement signals and retention risk.",
+      "outputs": [
+        { "id": "output-talent-1", "title": "Engagement Brief", "type": "pdf" }
+      ],
+      "steps": [
+        { "id": "step-talent-1", "title": "Aggregate survey signals" }
+      ],
+      "activity": [
+        { "id": "activity-talent-1", "title": "Engagement pulse", "date": "2024-05-02", "status": "Completed" }
+      ]
+    },
+    {
+      "id": "module-comp",
+      "kind": "module",
+      "name": "Compensation Strategy",
+      "domain": "People",
+      "orgUnitId": "org-people",
+      "ownerPersonId": "person-ethan",
+      "status": "Active",
+      "description": "Aligns compensation bands to market data.",
+      "outputs": [],
+      "steps": [
+        { "id": "step-comp-1", "title": "Calibrate salary bands" }
+      ],
+      "activity": [
+        { "id": "activity-comp-1", "title": "Band calibration", "date": "2024-05-01", "status": "Completed" }
+      ]
+    },
+    {
+      "id": "module-hiring",
+      "kind": "module",
+      "name": "Hiring Pipeline",
+      "domain": "People",
+      "orgUnitId": "org-people",
+      "ownerPersonId": "person-rina",
       "status": "Idle",
-      "owner": "Rina Patel",
       "description": "Guides hiring funnel and sourcing signals.",
-      "runs": [],
-      "artifacts": []
+      "outputs": [],
+      "steps": [
+        { "id": "step-hiring-1", "title": "Monitor candidate flow" }
+      ],
+      "activity": []
     }
   ],
   "people": [
-    { "id": "person-ava", "agentId": "agent-fin-01", "name": "Ava Chen", "title": "Finance Lead" },
-    { "id": "person-priya", "agentId": "agent-fin-02", "name": "Priya Singh", "title": "FP&A Director" },
-    { "id": "person-leo", "agentId": "agent-fin-03", "name": "Leo Martinez", "title": "Risk Analyst" },
-    { "id": "person-nora", "agentId": "agent-ops-01", "name": "Nora Park", "title": "Ops Program Manager" },
-    { "id": "person-omar", "agentId": "agent-ops-02", "name": "Omar Hayes", "title": "Quality Lead" },
-    { "id": "person-jin", "agentId": "agent-ops-03", "name": "Jin Lee", "title": "Vendor Manager" },
-    { "id": "person-maya", "agentId": "agent-hr-01", "name": "Maya Ortiz", "title": "People Ops Lead" },
-    { "id": "person-ethan", "agentId": "agent-hr-02", "name": "Ethan Cole", "title": "Compensation Manager" },
-    { "id": "person-rina", "agentId": "agent-hr-03", "name": "Rina Patel", "title": "Recruiting Lead" }
+    { "id": "person-ava", "kind": "person", "name": "Ava Chen", "title": "Finance Lead", "orgUnitId": "org-finance", "status": "Active" },
+    { "id": "person-priya", "kind": "person", "name": "Priya Singh", "title": "FP&A Director", "orgUnitId": "org-finance", "status": "Active" },
+    { "id": "person-leo", "kind": "person", "name": "Leo Martinez", "title": "Risk Analyst", "orgUnitId": "org-finance", "status": "Idle" },
+    { "id": "person-nora", "kind": "person", "name": "Nora Park", "title": "Ops Program Manager", "orgUnitId": "org-ops", "status": "Active" },
+    { "id": "person-omar", "kind": "person", "name": "Omar Hayes", "title": "Quality Lead", "orgUnitId": "org-ops", "status": "Active" },
+    { "id": "person-jin", "kind": "person", "name": "Jin Lee", "title": "Vendor Manager", "orgUnitId": "org-ops", "status": "Paused" },
+    { "id": "person-maya", "kind": "person", "name": "Maya Ortiz", "title": "People Ops Lead", "orgUnitId": "org-people", "status": "Active" },
+    { "id": "person-ethan", "kind": "person", "name": "Ethan Cole", "title": "Compensation Manager", "orgUnitId": "org-people", "status": "Active" },
+    { "id": "person-rina", "kind": "person", "name": "Rina Patel", "title": "Recruiting Lead", "orgUnitId": "org-people", "status": "Idle" }
+  ],
+  "links": [
+    {
+      "id": "link-uses-1",
+      "sourceId": "person-ava",
+      "targetId": "module-forecast",
+      "kind": "uses",
+      "activity": { "state": "active", "lastSeenAt": "2024-05-06T14:20:00Z", "intensity": 0.6 }
+    },
+    {
+      "id": "link-uses-2",
+      "sourceId": "person-nora",
+      "targetId": "module-quality",
+      "kind": "uses",
+      "activity": { "state": "active", "lastSeenAt": "2024-05-05T18:05:00Z", "intensity": 0.7 }
+    },
+    {
+      "id": "link-uses-3",
+      "sourceId": "person-maya",
+      "targetId": "module-hiring",
+      "kind": "uses",
+      "activity": { "state": "idle", "lastSeenAt": "2024-05-04T10:10:00Z", "intensity": 0.2 }
+    },
+    {
+      "id": "link-uses-4",
+      "sourceId": "person-ethan",
+      "targetId": "module-comp",
+      "kind": "uses",
+      "activity": { "state": "active", "lastSeenAt": "2024-05-03T16:40:00Z", "intensity": 0.5 }
+    }
   ]
 }
