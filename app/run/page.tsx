@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Card, PageHeader, Select, TextArea, Input, Button, Badge } from "../../components/ui";
-import { Chain, Contract, Mode, TaskRabbit } from "../../lib/types";
+import { Artifact, Chain, Contract, Mode, TaskRabbit } from "../../lib/types";
 import { estimateCostBand, modeLabels } from "../../lib/run-utils";
 import { useLocalStorageBoolean } from "../../lib/storage";
 
@@ -25,7 +25,7 @@ export default function RunPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [markdown, setMarkdown] = useState<string>("");
-  const [artifacts, setArtifacts] = useState<Array<{ type: string; pathOrDataUrl: string }>[]>([]);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [deepModeEnabled] = useLocalStorageBoolean("moneta-analytica-deep-mode", false);
 
   useEffect(() => {
