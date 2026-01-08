@@ -8,7 +8,8 @@ import { Badge, Button, Card, Input, PageHeader, Select } from "../../components
 // Plan: normalize map data into org units + modules + optional people overlays, then measure nodes
 // with ResizeObserver to keep edge paths accurate on resize/zoom while animating active links.
 
-type OrgStatus = "Operational" | "Scaling" | "Focused" | "Active" | "Idle" | "Paused";
+const orgStatusValues = ["Operational", "Scaling", "Focused", "Active", "Idle", "Paused"] as const;
+type OrgStatus = (typeof orgStatusValues)[number];
 
 type NodeKind = "orgUnit" | "module" | "person";
 
@@ -22,7 +23,8 @@ type OrgUnit = {
   description?: string;
 };
 
-type ModuleDomain = "Finance" | "Ops" | "People" | "Exec" | "Other";
+const moduleDomainValues = ["Finance", "Ops", "People", "Exec", "Other"] as const;
+type ModuleDomain = (typeof moduleDomainValues)[number];
 
 type Module = {
   id: string;
@@ -86,6 +88,69 @@ type MapSelection = { id: string; data: MapNodeData } | null;
 type NodeSize = { width: number; height: number };
 
 type OverlaySettings = { showPeople: boolean; showActivity: boolean };
+
+const linkKindValues = ["reportsTo", "owns", "uses"] as const;
+
+const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+
+const orgUnitIds = new Set(orgMap.orgUnits.map((orgUnit) => orgUnit.id));
+const personIds = new Set(orgMap.people.map((person) => person.id));
+
+const isValidModule = (module: (typeof orgMap.modules)[number]): module is Module => {
+  if (!module || typeof module !== "object") {
+    return false;
+  }
+  if (!isNonEmptyString(module.id) || module.kind !== "module" || !isNonEmptyString(module.name)) {
+    return false;
+  }
+  if (!moduleDomainValues.includes(module.domain)) {
+    return false;
+  }
+  if (!isNonEmptyString(module.orgUnitId) || !orgUnitIds.has(module.orgUnitId)) {
+    return false;
+  }
+  if (module.ownerPersonId && !personIds.has(module.ownerPersonId)) {
+    return false;
+  }
+  if (module.status && !orgStatusValues.includes(module.status as OrgStatus)) {
+    return false;
+  }
+  return true;
+};
+
+const validModules = orgMap.modules.filter(isValidModule);
+const moduleIds = new Set(validModules.map((module) => module.id));
+
+const nodeIds = new Set([orgMap.root.id, ...orgMap.orgUnits.map((orgUnit) => orgUnit.id), ...personIds, ...moduleIds]);
+
+const isValidLink = (link: (typeof orgMap.links)[number]): link is Link => {
+  if (!link || typeof link !== "object") {
+    return false;
+  }
+  if (!isNonEmptyString(link.id) || !isNonEmptyString(link.sourceId) || !isNonEmptyString(link.targetId)) {
+    return false;
+  }
+  if (!linkKindValues.includes(link.kind)) {
+    return false;
+  }
+  if (!nodeIds.has(link.sourceId) || !nodeIds.has(link.targetId)) {
+    return false;
+  }
+  if (link.kind === "uses" && (!personIds.has(link.sourceId) || !moduleIds.has(link.targetId))) {
+    return false;
+  }
+  if (link.activity) {
+    if (!["active", "idle"].includes(link.activity.state)) {
+      return false;
+    }
+    if (link.activity.intensity !== undefined && typeof link.activity.intensity !== "number") {
+      return false;
+    }
+  }
+  return true;
+};
+
+const validLinks = orgMap.links.filter(isValidLink);
 
 const statusPill: Record<OrgStatus, string> = {
   Operational: "bg-emerald-500/15 text-emerald-300",
@@ -158,7 +223,7 @@ export default function MapPage() {
       return passesFilter && passesStatus && passesSearch;
     });
 
-    const modules = orgMap.modules.filter((module) => {
+    const modules = validModules.filter((module) => {
       const passesOrg =
         orgUnitFilter === "all" ||
         module.orgUnitId === orgUnitFilter ||
@@ -271,7 +336,7 @@ export default function MapPage() {
     });
 
     if (showPeople) {
-      orgMap.links.forEach((link) => {
+      validLinks.forEach((link) => {
         const sourceInLayout = mapNodes.some((node) => node.id === link.sourceId);
         const targetInLayout = mapNodes.some((node) => node.id === link.targetId);
         if (sourceInLayout && targetInLayout && link.kind === "uses") {
@@ -731,8 +796,8 @@ export default function MapPage() {
                 <Card className="space-y-2">
                   <div className="text-sm text-slate-300">Module Ownership</div>
                   <div className="space-y-2 text-sm text-slate-400">
-                    {orgMap.modules.filter((module) => module.ownerPersonId === selectedNode.data.id).length ? (
-                      orgMap.modules
+                    {validModules.filter((module) => module.ownerPersonId === selectedNode.data.id).length ? (
+                      validModules
                         .filter((module) => module.ownerPersonId === selectedNode.data.id)
                         .map((module) => (
                           <div key={module.id}>{module.name}</div>
