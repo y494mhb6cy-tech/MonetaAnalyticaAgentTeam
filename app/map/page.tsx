@@ -96,14 +96,14 @@ const isNonEmptyString = (value: unknown): value is string => typeof value === "
 const orgUnitIds = new Set(orgMap.orgUnits.map((orgUnit) => orgUnit.id));
 const personIds = new Set(orgMap.people.map((person) => person.id));
 
-const isValidModule = (module: (typeof orgMap.modules)[number]): module is Module => {
+const isValidModule = (module: (typeof orgMap.modules)[number]) => {
   if (!module || typeof module !== "object") {
     return false;
   }
   if (!isNonEmptyString(module.id) || module.kind !== "module" || !isNonEmptyString(module.name)) {
     return false;
   }
-  if (!moduleDomainValues.includes(module.domain)) {
+  if (!moduleDomainValues.includes(module.domain as ModuleDomain)) {
     return false;
   }
   if (!isNonEmptyString(module.orgUnitId) || !orgUnitIds.has(module.orgUnitId)) {
@@ -123,14 +123,14 @@ const moduleIds = new Set(validModules.map((module) => module.id));
 
 const nodeIds = new Set([orgMap.root.id, ...orgMap.orgUnits.map((orgUnit) => orgUnit.id), ...personIds, ...moduleIds]);
 
-const isValidLink = (link: (typeof orgMap.links)[number]): link is Link => {
+const isValidLink = (link: (typeof orgMap.links)[number]) => {
   if (!link || typeof link !== "object") {
     return false;
   }
   if (!isNonEmptyString(link.id) || !isNonEmptyString(link.sourceId) || !isNonEmptyString(link.targetId)) {
     return false;
   }
-  if (!linkKindValues.includes(link.kind)) {
+  if (!linkKindValues.includes(link.kind as (typeof linkKindValues)[number])) {
     return false;
   }
   if (!nodeIds.has(link.sourceId) || !nodeIds.has(link.targetId)) {
@@ -295,10 +295,10 @@ export default function MapPage() {
             description: module.description,
             orgUnitId: module.orgUnitId,
             ownerPersonId: module.ownerPersonId,
-            domain: module.domain,
-            outputs: module.outputs,
-            steps: module.steps,
-            activity: module.activity
+            domain: module.domain as ModuleDomain,
+            outputs: module.outputs as Module["outputs"],
+            steps: module.steps as Module["steps"],
+            activity: module.activity as Module["activity"]
           }),
           x: moduleX,
           y: moduleY
@@ -340,7 +340,7 @@ export default function MapPage() {
         const sourceInLayout = mapNodes.some((node) => node.id === link.sourceId);
         const targetInLayout = mapNodes.some((node) => node.id === link.targetId);
         if (sourceInLayout && targetInLayout && link.kind === "uses") {
-          mapEdges.push(link);
+          mapEdges.push(link as Link);
         }
       });
     }
@@ -695,10 +695,10 @@ export default function MapPage() {
                         description: module.description,
                         orgUnitId: module.orgUnitId,
                         ownerPersonId: module.ownerPersonId,
-                        domain: module.domain,
-                        outputs: module.outputs,
-                        steps: module.steps,
-                        activity: module.activity
+                        domain: module.domain as ModuleDomain,
+                        outputs: module.outputs as Module["outputs"],
+                        steps: module.steps as Module["steps"],
+                        activity: module.activity as Module["activity"]
                       });
                       setSelectedId(module.id);
                       setDraftEdits({
