@@ -5,3 +5,4 @@
 
 **What fixed**
 - The module validator now accepts `unknown` and narrows via a safe wrapper so the build can complete while still validating module data before rendering.
+- The map page no longer contains unresolved merge conflict markers in its validation block.
