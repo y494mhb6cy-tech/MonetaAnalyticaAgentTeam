@@ -3,7 +3,7 @@ import { addArtifacts, addRun, getStore, newId } from "../../../lib/store";
 import { estimateCostBand, stringifyMarkdown } from "../../../lib/run-utils";
 import { buildDocx, buildPdf } from "../../../lib/artifacts";
 import { runTaskWithProvider } from "../../../lib/ai";
-import { Mode, RunInput, StructuredOutput } from "../../../lib/types";
+import { Mode, Run, RunInput, StructuredOutput } from "../../../lib/types";
 
 type RunRequest = {
   taskId?: string;
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     const runId = newId("run");
-    const run = {
+    const run: Run = {
       id: runId,
       taskId: body.taskId,
       chainId: body.chainId,
