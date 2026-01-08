@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       startedAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
       status: "completed" as const,
-      outputArtifactIds: [],
+      outputArtifactIds: [] as string[],
       stats: {
         inputChars,
         estimatedCostBand
