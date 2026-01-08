@@ -28,6 +28,21 @@ npm start
 
 Set environment variables in Netlify **Site settings → Environment variables**.
 
+## Redeploy (clear cache)
+
+Use this when you need to force a clean build on Netlify.
+
+**Trigger a deploy with cache cleared**
+
+- Netlify UI: **Deploys → Trigger deploy → Clear cache and deploy site**
+- Netlify CLI: `netlify deploy --build --prod`
+
+**Verify deployment details**
+
+- Confirm the deploy hash and published time in **Deploys** (latest deploy row shows the hash and timestamp).
+- Expected build command: `npm run build:clean`
+- Publish directory: `.next` with `@netlify/plugin-nextjs`
+
 ## Notes
 
 - Task Rabbits, Chains, Runs, and Artifacts are stored in a JSON store under `/tmp` at runtime with a seed file committed in `data/seed.json`.
