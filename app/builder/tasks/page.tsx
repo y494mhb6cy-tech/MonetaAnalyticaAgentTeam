@@ -41,7 +41,7 @@ export default function TaskBuilderPage() {
     const now = new Date().toISOString();
     const newTask: TaskRabbit = {
       id: `task_${nanoid(8)}`,
-      name: "New Task Rabbit",
+      name: "New Agent",
       description: "Describe the outcome.",
       domain: "General",
       defaultMode: "standard",
@@ -67,14 +67,14 @@ export default function TaskBuilderPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Task Rabbits Builder"
-        subtitle="Create and refine single-task Task Rabbits for Moneta Analytica output runs."
-        actions={<Button onClick={onCreate}>New Task Rabbit</Button>}
+        title="Agents Builder"
+        subtitle="Create and refine single-task Agents for Moneta Analytica output runs."
+        actions={<Button onClick={onCreate}>New Agent</Button>}
       />
 
       <div className="grid lg:grid-cols-[1fr,2fr] gap-6">
         <Card className="space-y-4">
-          <div className="text-sm text-slate-400">Task Rabbits</div>
+          <div className="text-sm text-slate-400">Agents</div>
           <div className="space-y-2">
             {tasks.map((task) => (
               <button
@@ -120,7 +120,7 @@ export default function TaskBuilderPage() {
               />
             ) : null}
             <div className="flex justify-end">
-              <Button onClick={onSave}>Save Task Rabbit</Button>
+              <Button onClick={onSave}>Save Agent</Button>
             </div>
           </Card>
         ) : null}

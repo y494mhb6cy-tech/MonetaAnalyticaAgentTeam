@@ -74,7 +74,7 @@ export default function ChainBuilderPage() {
     <div className="space-y-8">
       <PageHeader
         title="Chains Builder"
-        subtitle="Sequence Task Rabbits into multi-step Chains for repeatable executive workflows."
+        subtitle="Sequence Agents into multi-step Chains for repeatable executive workflows."
         actions={<Button onClick={onCreate}>New Chain</Button>}
       />
 
