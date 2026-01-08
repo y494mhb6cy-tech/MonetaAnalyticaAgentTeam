@@ -1,889 +1,580 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import orgMap from "../../data/org-map.json";
-import { Badge, Button, Card, Input, PageHeader, Select } from "../../components/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Badge, Button, Card, Input, PageHeader } from "../../components/ui";
 
-// Map rendering approach: custom absolute-positioned nodes + SVG paths for edges (no React Flow).
-// Plan: normalize map data into org units + modules + optional people overlays, then measure nodes
-// with ResizeObserver to keep edge paths accurate on resize/zoom while animating active links.
+type NodeKind = "personnel" | "agent";
 
-const orgStatusValues = ["Operational", "Scaling", "Focused", "Active", "Idle", "Paused"] as const;
-type OrgStatus = (typeof orgStatusValues)[number];
+type Personnel = { id: string; name: string; title?: string; team?: string };
 
-type NodeKind = "orgUnit" | "module" | "person";
+type Agent = { id: string; name: string; purpose?: string; module?: string };
 
-type OrgUnit = {
+type MapNode = { id: string; kind: NodeKind; refId: string; position: { x: number; y: number } };
+
+type MapEdge = { id: string; fromNodeId: string; toNodeId: string; kind: "personnel-agent" };
+
+type MapState = {
+  personnel: Personnel[];
+  agents: Agent[];
+  nodes: MapNode[];
+  edges: MapEdge[];
+};
+
+type DragState = {
   id: string;
-  kind: "orgUnit";
-  name: string;
-  ownerTitle?: string;
-  parentId?: string | null;
-  status?: OrgStatus;
-  description?: string;
+  offsetX: number;
+  offsetY: number;
+  didMove: boolean;
 };
 
-const moduleDomainValues = ["Finance", "Ops", "People", "Exec", "Other"] as const;
-type ModuleDomain = (typeof moduleDomainValues)[number];
+type Toast = { id: number; message: string };
 
-type Module = {
-  id: string;
-  kind: "module";
-  name: string;
-  domain: ModuleDomain;
-  ownerPersonId?: string;
-  orgUnitId?: string;
-  status?: OrgStatus;
-  description?: string;
-  outputs?: Array<{ id: string; title: string; type: "pdf" | "pptx" | "link"; url?: string }>;
-  steps?: Array<{ id: string; title: string; qaRequired?: boolean }>;
-  activity?: Array<{ id: string; title: string; date: string; status: string }>;
+const storageKey = "maos_map_state_v1";
+
+const canvasSize = { width: 2000, height: 1200 };
+
+const nodeSizes: Record<NodeKind, { width: number; height: number }> = {
+  personnel: { width: 200, height: 92 },
+  agent: { width: 210, height: 96 }
 };
 
-type Person = {
-  id: string;
-  kind: "person";
-  name: string;
-  title?: string;
-  orgUnitId?: string;
-  status?: OrgStatus | "out";
-};
-
-type Link = {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  kind: "reportsTo" | "owns" | "uses";
-  activity?: {
-    state: "active" | "idle";
-    lastSeenAt?: string;
-    intensity?: number;
-  };
-};
-
-type MapNodeData = {
-  id: string;
-  name: string;
-  kind: NodeKind;
-  status?: OrgStatus;
-  owner?: string;
-  description?: string;
-  title?: string;
-  orgUnitId?: string;
-  ownerPersonId?: string;
-  domain?: ModuleDomain;
-  outputs?: Module["outputs"];
-  steps?: Module["steps"];
-  activity?: Module["activity"];
-};
-
-type PositionedNode = MapNodeData & { x: number; y: number };
-
-type MapEdge = Link;
-
-type Viewport = { x: number; y: number; scale: number };
-
-type MapSelection = { id: string; data: MapNodeData } | null;
-
-type NodeSize = { width: number; height: number };
-
-type OverlaySettings = { showPeople: boolean; showActivity: boolean };
-
-const linkKindValues = ["reportsTo", "owns", "uses"] as const;
-
-const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
-
-const orgUnitIds = new Set(orgMap.orgUnits.map((orgUnit) => orgUnit.id));
-const personIds = new Set(orgMap.people.map((person) => person.id));
-
-const isValidModule = (module: (typeof orgMap.modules)[number]) => {
-  if (!module || typeof module !== "object") {
-    return false;
-  }
-  if (!isNonEmptyString(module.id) || module.kind !== "module" || !isNonEmptyString(module.name)) {
-    return false;
-  }
-  if (!moduleDomainValues.includes(module.domain as ModuleDomain)) {
-    return false;
-  }
-  if (!isNonEmptyString(module.orgUnitId) || !orgUnitIds.has(module.orgUnitId)) {
-    return false;
-  }
-  if (module.ownerPersonId && !personIds.has(module.ownerPersonId)) {
-    return false;
-  }
-  if (module.status && !orgStatusValues.includes(module.status as OrgStatus)) {
-    return false;
-  }
-  return true;
-};
-
-const validModules = orgMap.modules.filter(isValidModule);
-const moduleIds = new Set(validModules.map((module) => module.id));
-
-const nodeIds = new Set([orgMap.root.id, ...orgMap.orgUnits.map((orgUnit) => orgUnit.id), ...personIds, ...moduleIds]);
-
-const isValidLink = (link: (typeof orgMap.links)[number]) => {
-  if (!link || typeof link !== "object") {
-    return false;
-  }
-  if (!isNonEmptyString(link.id) || !isNonEmptyString(link.sourceId) || !isNonEmptyString(link.targetId)) {
-    return false;
-  }
-  if (!linkKindValues.includes(link.kind as (typeof linkKindValues)[number])) {
-    return false;
-  }
-  if (!nodeIds.has(link.sourceId) || !nodeIds.has(link.targetId)) {
-    return false;
-  }
-  if (link.kind === "uses" && (!personIds.has(link.sourceId) || !moduleIds.has(link.targetId))) {
-    return false;
-  }
-  if (link.activity) {
-    if (!["active", "idle"].includes(link.activity.state)) {
-      return false;
-    }
-    if (link.activity.intensity !== undefined && typeof link.activity.intensity !== "number") {
-      return false;
-    }
-  }
-  return true;
-};
-
-const validLinks = orgMap.links.filter(isValidLink);
-
-const statusPill: Record<OrgStatus, string> = {
-  Operational: "bg-emerald-500/15 text-emerald-300",
-  Scaling: "bg-sky-500/15 text-sky-300",
-  Focused: "bg-amber-500/15 text-amber-300",
-  Active: "bg-emerald-500/15 text-emerald-300",
-  Idle: "bg-slate-500/15 text-slate-300",
-  Paused: "bg-rose-500/15 text-rose-300"
+const seedState: MapState = {
+  personnel: [
+    { id: "personnel-1", name: "Avery Quinn", title: "Ops Lead", team: "Operations" },
+    { id: "personnel-2", name: "Riley Chen", title: "Finance Partner", team: "Finance" }
+  ],
+  agents: [
+    { id: "agent-1", name: "Ledger Agent", purpose: "Close reporting", module: "Finance" },
+    { id: "agent-2", name: "Pulse Agent", purpose: "Workflow health", module: "Ops" }
+  ],
+  nodes: [
+    { id: "node-1", kind: "personnel", refId: "personnel-1", position: { x: 280, y: 220 } },
+    { id: "node-2", kind: "agent", refId: "agent-1", position: { x: 620, y: 240 } }
+  ],
+  edges: []
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-const defaultNodeSize: Record<NodeKind, NodeSize> = {
-  orgUnit: { width: 220, height: 96 },
-  module: { width: 220, height: 110 },
-  person: { width: 170, height: 84 }
+const createId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `id-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const overlayStorageKey = "moneta-agent-map-overlays";
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
-const edgePath = (source: PositionedNode, target: PositionedNode, nodeSizes: Record<string, NodeSize>) => {
-  const sourceSize = nodeSizes[source.id] ?? defaultNodeSize[source.kind];
-  const targetSize = nodeSizes[target.id] ?? defaultNodeSize[target.kind];
-  const startX = source.x + sourceSize.width / 2;
-  const startY = source.y + sourceSize.height;
-  const endX = target.x + targetSize.width / 2;
-  const endY = target.y;
-  const midY = (startY + endY) / 2;
-  return `M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`;
+const isPersonnel = (value: unknown): value is Personnel => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.id === "string" && typeof value.name === "string";
 };
 
-const edgeStyles = {
-  reportsTo: { stroke: "rgba(148, 163, 184, 0.4)", width: 2, dash: "" },
-  owns: { stroke: "rgba(148, 163, 184, 0.7)", width: 2.2, dash: "" },
-  uses: { stroke: "rgba(56, 189, 248, 0.45)", width: 1.8, dash: "6 6" }
+const isAgent = (value: unknown): value is Agent => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.id === "string" && typeof value.name === "string";
+};
+
+const isMapNode = (value: unknown): value is MapNode => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.kind !== "personnel" && value.kind !== "agent") {
+    return false;
+  }
+  if (typeof value.id !== "string" || typeof value.refId !== "string") {
+    return false;
+  }
+  if (!isRecord(value.position)) {
+    return false;
+  }
+  return typeof value.position.x === "number" && typeof value.position.y === "number";
+};
+
+const isMapEdge = (value: unknown): value is MapEdge => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.kind !== "personnel-agent") {
+    return false;
+  }
+  return typeof value.id === "string" && typeof value.fromNodeId === "string" && typeof value.toNodeId === "string";
+};
+
+const isMapState = (value: unknown): value is MapState => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    Array.isArray(value.personnel) &&
+    value.personnel.every(isPersonnel) &&
+    Array.isArray(value.agents) &&
+    value.agents.every(isAgent) &&
+    Array.isArray(value.nodes) &&
+    value.nodes.every(isMapNode) &&
+    Array.isArray(value.edges) &&
+    value.edges.every(isMapEdge)
+  );
 };
 
 export default function MapPage() {
-  const [showPeople, setShowPeople] = useState(false);
-  const [showActivity, setShowActivity] = useState(true);
+  const [mapState, setMapState] = useState<MapState>(seedState);
+  const [activeTab, setActiveTab] = useState<NodeKind>("personnel");
   const [search, setSearch] = useState("");
-  const [orgUnitFilter, setOrgUnitFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [draftEdits, setDraftEdits] = useState({ name: "", owner: "", status: "" });
-  const [overrides, setOverrides] = useState<Record<string, Partial<MapNodeData>>>({});
-  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
-  const [nodeSizes, setNodeSizes] = useState<Record<string, NodeSize>>({});
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-  const viewStart = useRef({ x: 0, y: 0 });
+  const [connectMode, setConnectMode] = useState(false);
+  const [connectFromId, setConnectFromId] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const canvasInnerRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef<DragState | null>(null);
+  const suppressClick = useRef(false);
 
-  const withOverride = (id: string, base: MapNodeData) => ({
-    ...base,
-    ...overrides[id]
-  });
+  const personnelById = useMemo(() => {
+    return mapState.personnel.reduce<Record<string, Personnel>>((acc, person) => {
+      acc[person.id] = person;
+      return acc;
+    }, {});
+  }, [mapState.personnel]);
 
-  const filteredData = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    const matchesSearch = (value: string) =>
-      !normalizedSearch || value.toLowerCase().includes(normalizedSearch);
+  const agentsById = useMemo(() => {
+    return mapState.agents.reduce<Record<string, Agent>>((acc, agent) => {
+      acc[agent.id] = agent;
+      return acc;
+    }, {});
+  }, [mapState.agents]);
 
-    const orgUnits = orgMap.orgUnits.filter((orgUnit) => {
-      const passesFilter = orgUnitFilter === "all" || orgUnit.id === orgUnitFilter;
-      const passesStatus = statusFilter === "all" || orgUnit.status === statusFilter;
-      const passesSearch = matchesSearch(orgUnit.name);
-      return passesFilter && passesStatus && passesSearch;
-    });
-
-    const modules = validModules.filter((module) => {
-      const passesOrg =
-        orgUnitFilter === "all" ||
-        module.orgUnitId === orgUnitFilter ||
-        orgUnits.some((orgUnit) => orgUnit.id === module.orgUnitId);
-      const passesStatus = statusFilter === "all" || module.status === statusFilter;
-      const passesSearch = matchesSearch(module.name);
-      return passesOrg && passesStatus && passesSearch;
-    });
-
-    const people = orgMap.people.filter((person) => {
-      const belongsToOrg = orgUnits.some((orgUnit) => orgUnit.id === person.orgUnitId);
-      return showPeople && belongsToOrg && matchesSearch(person.name);
-    });
-
-    return { orgUnits, modules, people };
-  }, [orgUnitFilter, search, showPeople, statusFilter]);
-
-  const layout = useMemo(() => {
-    const mapNodes: PositionedNode[] = [];
-    const mapEdges: MapEdge[] = [];
-    const orgUnitSpacing = 380;
-    const moduleSpacing = 240;
-    const peopleSpacing = 170;
-    const rowSpacing = 190;
-    const orgUnitCount = filteredData.orgUnits.length || 1;
-
-    mapNodes.push({
-      ...withOverride(orgMap.root.id, {
-        id: orgMap.root.id,
-        name: orgMap.root.name,
-        kind: "orgUnit",
-        status: orgMap.root.status as OrgStatus,
-        owner: orgMap.root.ownerTitle,
-        description: orgMap.root.description
-      }),
-      x: 0,
-      y: 0
-    });
-
-    filteredData.orgUnits.forEach((orgUnit, orgIndex) => {
-      const baseX = (orgIndex - (orgUnitCount - 1) / 2) * orgUnitSpacing;
-      const orgY = rowSpacing;
-      mapNodes.push({
-        ...withOverride(orgUnit.id, {
-          id: orgUnit.id,
-          name: orgUnit.name,
-          kind: "orgUnit",
-          status: orgUnit.status as OrgStatus,
-          owner: orgUnit.ownerTitle,
-          description: orgUnit.description
-        }),
-        x: baseX,
-        y: orgY
-      });
-      mapEdges.push({ id: `edge-root-${orgUnit.id}`, sourceId: orgMap.root.id, targetId: orgUnit.id, kind: "reportsTo" });
-
-      const orgModules = filteredData.modules.filter((module) => module.orgUnitId === orgUnit.id);
-      const moduleCount = orgModules.length || 1;
-      orgModules.forEach((module, moduleIndex) => {
-        const moduleX = baseX + (moduleIndex - (moduleCount - 1) / 2) * moduleSpacing;
-        const moduleY = rowSpacing * 2;
-        mapNodes.push({
-          ...withOverride(module.id, {
-            id: module.id,
-            name: module.name,
-            kind: "module",
-            status: module.status as OrgStatus,
-            owner: orgMap.people.find((person) => person.id === module.ownerPersonId)?.name,
-            description: module.description,
-            orgUnitId: module.orgUnitId,
-            ownerPersonId: module.ownerPersonId,
-            domain: module.domain as ModuleDomain,
-            outputs: module.outputs as Module["outputs"],
-            steps: module.steps as Module["steps"],
-            activity: module.activity as Module["activity"]
-          }),
-          x: moduleX,
-          y: moduleY
-        });
-        mapEdges.push({ id: `edge-org-${module.id}`, sourceId: orgUnit.id, targetId: module.id, kind: "reportsTo" });
-
-        if (showPeople && module.ownerPersonId) {
-          const owner = orgMap.people.find((person) => person.id === module.ownerPersonId);
-          if (owner) {
-            mapEdges.push({ id: `edge-owner-${module.id}`, sourceId: owner.id, targetId: module.id, kind: "owns" });
-          }
-        }
-      });
-
-      if (showPeople) {
-        const orgPeople = filteredData.people.filter((person) => person.orgUnitId === orgUnit.id);
-        const peopleCount = orgPeople.length || 1;
-        orgPeople.forEach((person, personIndex) => {
-          const personX = baseX + (personIndex - (peopleCount - 1) / 2) * peopleSpacing;
-          const personY = rowSpacing * 3.05;
-          mapNodes.push({
-            ...withOverride(person.id, {
-              id: person.id,
-              name: person.name,
-              kind: "person",
-              status: person.status as OrgStatus,
-              title: person.title,
-              orgUnitId: person.orgUnitId
-            }),
-            x: personX,
-            y: personY
-          });
-        });
-      }
-    });
-
-    if (showPeople) {
-      validLinks.forEach((link) => {
-        const sourceInLayout = mapNodes.some((node) => node.id === link.sourceId);
-        const targetInLayout = mapNodes.some((node) => node.id === link.targetId);
-        if (sourceInLayout && targetInLayout && link.kind === "uses") {
-          mapEdges.push(link as Link);
-        }
-      });
-    }
-
-    return { nodes: mapNodes, edges: mapEdges };
-  }, [filteredData, overrides, showPeople]);
-
-  const nodeMap = useMemo(() => {
-    return layout.nodes.reduce<Record<string, PositionedNode>>((acc, node) => {
+  const nodeById = useMemo(() => {
+    return mapState.nodes.reduce<Record<string, MapNode>>((acc, node) => {
       acc[node.id] = node;
       return acc;
     }, {});
-  }, [layout.nodes]);
+  }, [mapState.nodes]);
 
-  const activeNodeIds = useMemo(() => {
-    if (!showActivity) {
-      return new Set<string>();
+  const listItems = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchesSearch = (value: string) => !normalizedSearch || value.toLowerCase().includes(normalizedSearch);
+
+    if (activeTab === "personnel") {
+      return mapState.personnel.filter((person) => matchesSearch(person.name));
     }
-    const activeLinks = layout.edges.filter((edge) => edge.activity?.state === "active");
-    return new Set(activeLinks.flatMap((edge) => [edge.sourceId, edge.targetId]));
-  }, [layout.edges, showActivity]);
+    return mapState.agents.filter((agent) => matchesSearch(agent.name));
+  }, [activeTab, mapState.agents, mapState.personnel, search]);
 
-  const selectedNode = useMemo<MapSelection>(() => {
-    if (!selectedId) {
-      return null;
-    }
-    const data = layout.nodes.find((node) => node.id === selectedId);
-    return data ? { id: selectedId, data } : null;
-  }, [layout.nodes, selectedId]);
-
-  const statusOptions = ["all", "Operational", "Scaling", "Focused", "Active", "Idle", "Paused"];
-
-  useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(overlayStorageKey) : null;
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as OverlaySettings;
-        if (typeof parsed.showPeople === "boolean") {
-          setShowPeople(parsed.showPeople);
-        }
-        if (typeof parsed.showActivity === "boolean") {
-          setShowActivity(parsed.showActivity);
-        }
-      } catch {
-        // ignore storage parse errors
-      }
-    }
+  const showToast = useCallback((message: string) => {
+    setToast({ id: Date.now(), message });
   }, []);
 
-  useEffect(() => {
-    const payload: OverlaySettings = { showPeople, showActivity };
-    window.localStorage.setItem(overlayStorageKey, JSON.stringify(payload));
-  }, [showPeople, showActivity]);
-
-  useEffect(() => {
-    const handleMouseUp = () => {
-      isPanning.current = false;
-    };
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => window.removeEventListener("mouseup", handleMouseUp);
-  }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    let frame: number | null = null;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
+  const centerOnNode = useCallback(
+    (nodeId: string) => {
+      const node = nodeById[nodeId];
+      const container = canvasRef.current;
+      if (!node || !container) {
         return;
       }
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      frame = requestAnimationFrame(() => {
-        setContainerSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+      const size = nodeSizes[node.kind];
+      const targetLeft = node.position.x + size.width / 2 - container.clientWidth / 2;
+      const targetTop = node.position.y + size.height / 2 - container.clientHeight / 2;
+      container.scrollTo({
+        left: clamp(targetLeft, 0, canvasSize.width - container.clientWidth),
+        top: clamp(targetTop, 0, canvasSize.height - container.clientHeight),
+        behavior: "smooth"
       });
-    });
-    observer.observe(container);
-    return () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
+    },
+    [nodeById]
+  );
+
+  const ensureNodeOnCanvas = useCallback(
+    (kind: NodeKind, refId: string) => {
+      const existing = mapState.nodes.find((node) => node.kind === kind && node.refId === refId);
+      if (existing) {
+        centerOnNode(existing.id);
+        return;
       }
-      observer.disconnect();
+      const container = canvasRef.current;
+      const size = nodeSizes[kind];
+      const defaultX = container ? container.scrollLeft + container.clientWidth / 2 : canvasSize.width / 2;
+      const defaultY = container ? container.scrollTop + container.clientHeight / 2 : canvasSize.height / 2;
+      const position = {
+        x: clamp(defaultX - size.width / 2, 0, canvasSize.width - size.width),
+        y: clamp(defaultY - size.height / 2, 0, canvasSize.height - size.height)
+      };
+      const newNode: MapNode = { id: createId(), kind, refId, position };
+      setMapState((prev) => ({ ...prev, nodes: [...prev.nodes, newNode] }));
+      requestAnimationFrame(() => centerOnNode(newNode.id));
+    },
+    [centerOnNode, mapState.nodes]
+  );
+
+  const addItem = (kind: NodeKind) => {
+    const baseName = kind === "personnel" ? "New Personnel" : "New Agent";
+    const newId = createId();
+    const name = `${baseName} ${kind === "personnel" ? mapState.personnel.length + 1 : mapState.agents.length + 1}`;
+    if (kind === "personnel") {
+      const newPerson: Personnel = { id: newId, name, title: "Role", team: "Team" };
+      setMapState((prev) => ({ ...prev, personnel: [...prev.personnel, newPerson] }));
+      ensureNodeOnCanvas("personnel", newId);
+    } else {
+      const newAgent: Agent = { id: newId, name, purpose: "Purpose", module: "Module" };
+      setMapState((prev) => ({ ...prev, agents: [...prev.agents, newAgent] }));
+      ensureNodeOnCanvas("agent", newId);
+    }
+  };
+
+  const handleNodeClick = (nodeId: string) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (!connectMode) {
+      return;
+    }
+    if (!connectFromId) {
+      setConnectFromId(nodeId);
+      return;
+    }
+    if (connectFromId === nodeId) {
+      setConnectFromId(null);
+      return;
+    }
+    const fromNode = nodeById[connectFromId];
+    const toNode = nodeById[nodeId];
+    if (!fromNode || !toNode) {
+      setConnectFromId(null);
+      return;
+    }
+    if (fromNode.kind === toNode.kind) {
+      showToast("Connect a Personnel node to an Agent node.");
+      setConnectFromId(null);
+      return;
+    }
+    const exists = mapState.edges.some(
+      (edge) =>
+        (edge.fromNodeId === fromNode.id && edge.toNodeId === toNode.id) ||
+        (edge.fromNodeId === toNode.id && edge.toNodeId === fromNode.id)
+    );
+    if (exists) {
+      showToast("Those nodes are already connected.");
+      setConnectFromId(null);
+      return;
+    }
+    const newEdge: MapEdge = {
+      id: createId(),
+      fromNodeId: fromNode.id,
+      toNodeId: toNode.id,
+      kind: "personnel-agent"
     };
+    setMapState((prev) => ({ ...prev, edges: [...prev.edges, newEdge] }));
+    setConnectFromId(null);
+  };
+
+  const resetPositions = () => {
+    const columns = 4;
+    const horizontalSpacing = 260;
+    const verticalSpacing = 180;
+    setMapState((prev) => ({
+      ...prev,
+      nodes: prev.nodes.map((node, index) => {
+        const row = Math.floor(index / columns);
+        const col = index % columns;
+        const size = nodeSizes[node.kind];
+        const x = clamp(140 + col * horizontalSpacing, 0, canvasSize.width - size.width);
+        const y = clamp(140 + row * verticalSpacing, 0, canvasSize.height - size.height);
+        return { ...node, position: { x, y } };
+      })
+    }));
+  };
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as unknown;
+        if (isMapState(parsed)) {
+          setMapState(parsed);
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+    setHasHydrated(true);
   }, []);
 
   useEffect(() => {
-    let frame: number | null = null;
-    const observer = new ResizeObserver((entries) => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      frame = requestAnimationFrame(() => {
-        setNodeSizes((prev) => {
-          let changed = false;
-          const next = { ...prev };
-          entries.forEach((entry) => {
-            const element = entry.target as HTMLButtonElement;
-            const nodeId = element.dataset.nodeId;
-            if (!nodeId) {
-              return;
-            }
-            const width = element.offsetWidth;
-            const height = element.offsetHeight;
-            const current = next[nodeId];
-            if (!current || current.width !== width || current.height !== height) {
-              next[nodeId] = { width, height };
-              changed = true;
-            }
-          });
-          return changed ? next : prev;
-        });
-      });
-    });
-
-    nodeRefs.current.forEach((element) => observer.observe(element));
-
-    return () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      observer.disconnect();
-    };
-  }, [layout.nodes]);
+    if (!hasHydrated) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      window.localStorage.setItem(storageKey, JSON.stringify(mapState));
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [hasHydrated, mapState]);
 
   useEffect(() => {
-    setNodeSizes((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      nodeRefs.current.forEach((element, id) => {
-        const width = element.offsetWidth;
-        const height = element.offsetHeight;
-        const current = next[id];
-        if (!current || current.width !== width || current.height !== height) {
-          next[id] = { width, height };
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [layout.nodes, containerSize]);
+    if (!toast) {
+      return;
+    }
+    const handle = window.setTimeout(() => setToast(null), 2400);
+    return () => window.clearTimeout(handle);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!connectMode) {
+      setConnectFromId(null);
+    }
+  }, [connectMode]);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!dragState.current) {
+        return;
+      }
+      const bounds = canvasInnerRef.current?.getBoundingClientRect();
+      if (!bounds) {
+        return;
+      }
+      const node = nodeById[dragState.current.id];
+      if (!node) {
+        return;
+      }
+      const size = nodeSizes[node.kind];
+      const nextX = event.clientX - bounds.left - dragState.current.offsetX;
+      const nextY = event.clientY - bounds.top - dragState.current.offsetY;
+      const clampedX = clamp(nextX, 0, canvasSize.width - size.width);
+      const clampedY = clamp(nextY, 0, canvasSize.height - size.height);
+      if (Math.abs(nextX - node.position.x) > 1 || Math.abs(nextY - node.position.y) > 1) {
+        dragState.current.didMove = true;
+      }
+      setMapState((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((item) =>
+          item.id === dragState.current?.id ? { ...item, position: { x: clampedX, y: clampedY } } : item
+        )
+      }));
+    };
+
+    const handlePointerUp = () => {
+      if (dragState.current?.didMove) {
+        suppressClick.current = true;
+      }
+      dragState.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [nodeById]);
+
+  const emptyCanvas = mapState.nodes.length === 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Agent Map"
-        subtitle="Explore Moneta Analytica as a living org chart of org units, modules, and ownership overlays."
+        title="Moneta Analytica OS"
+        subtitle="Design your operating system map with personnel and agent connections."
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              className={connectMode ? "border border-accent-500/60" : "border border-transparent"}
+              onClick={() => setConnectMode((prev) => !prev)}
+            >
+              {connectMode ? "Connect Mode On" : "Connect Mode"}
+            </Button>
+            <Button variant="ghost" onClick={resetPositions}>
+              Clear layout / Reset positions
+            </Button>
+          </>
+        }
       />
 
-      <Card className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm uppercase text-slate-400">Sidebar</div>
+            <Badge label={activeTab === "personnel" ? `${mapState.personnel.length} Personnel` : `${mapState.agents.length} Agents`} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
+                activeTab === "personnel" ? "bg-white/10 text-white" : "bg-white/5 text-slate-300"
+              }`}
+              onClick={() => setActiveTab("personnel")}
+            >
+              Personnel
+            </button>
+            <button
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
+                activeTab === "agent" ? "bg-white/10 text-white" : "bg-white/5 text-slate-300"
+              }`}
+              onClick={() => setActiveTab("agent")}
+            >
+              Agents
+            </button>
+          </div>
           <Input
-            label="Search"
-            placeholder="Search nodes"
+            label={activeTab === "personnel" ? "Search personnel" : "Search agents"}
+            placeholder={activeTab === "personnel" ? "Filter by name" : "Filter by agent"}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-          <Select label="Filter by org unit" value={orgUnitFilter} onChange={(event) => setOrgUnitFilter(event.target.value)}>
-            <option value="all">All org units</option>
-            {orgMap.orgUnits.map((orgUnit) => (
-              <option key={orgUnit.id} value={orgUnit.id}>{orgUnit.name}</option>
-            ))}
-          </Select>
-          <Select label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Overlay toggles control people visibility and activity edge animation. */}
-          <Button
-            variant="ghost"
-            className={showPeople ? "border border-accent-500/50" : "border border-transparent"}
-            onClick={() => setShowPeople((prev) => !prev)}
-            aria-pressed={showPeople}
-          >
-            {showPeople ? "Hide People" : "Show People"}
-          </Button>
-          <Button
-            variant="ghost"
-            className={showActivity ? "border border-accent-500/50" : "border border-transparent"}
-            onClick={() => setShowActivity((prev) => !prev)}
-            aria-pressed={showActivity}
-          >
-            {showActivity ? "Activity On" : "Activity Off"}
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setViewport({ x: 0, y: 0, scale: 1 })}
-          >
-            Reset view
-          </Button>
-          <Badge label={`${filteredData.modules.length} Modules`} />
-        </div>
-      </Card>
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-400">
+              {activeTab === "personnel" ? "Personnel list" : "Agent list"}
+            </div>
+            <Button variant="ghost" onClick={() => addItem(activeTab)}>
+              + Add
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {listItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-xs text-slate-500">
+                {activeTab === "personnel" ? "No personnel yet…" : "No agents yet…"}
+              </div>
+            ) : null}
+            {listItems.map((item) => {
+              const id = item.id;
+              const label = item.name;
+              const meta =
+                activeTab === "personnel"
+                  ? (item as Personnel).title || (item as Personnel).team
+                  : (item as Agent).purpose || (item as Agent).module;
+              return (
+                <button
+                  key={id}
+                  onClick={() => ensureNodeOnCanvas(activeTab, id)}
+                  className="w-full rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2 text-left text-sm hover:border-accent-500/60"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-white">{label}</div>
+                    <span className="text-xs text-slate-500">{activeTab === "personnel" ? "👤" : "🤖"}</span>
+                  </div>
+                  {meta ? <div className="text-xs text-slate-400 mt-1">{meta}</div> : null}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
 
-      <div className="relative">
-        <div className="hidden lg:block">
+        <Card className="relative overflow-hidden p-0">
+          <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+            <div>
+              <div className="text-sm text-slate-400">Canvas</div>
+              <div className="text-lg font-semibold text-white">Moneta Analytica OS Map</div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span>{connectMode ? "Connect mode: select two nodes" : "Drag nodes to arrange"}</span>
+            </div>
+          </div>
           <div
-            ref={containerRef}
-            className="relative h-[calc(100vh-320px)] min-h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-ink-900/40"
-            onMouseDown={(event) => {
-              if (event.button !== 0) {
-                return;
-              }
-              isPanning.current = true;
-              panStart.current = { x: event.clientX, y: event.clientY };
-              viewStart.current = { x: viewport.x, y: viewport.y };
-            }}
-            onMouseMove={(event) => {
-              if (!isPanning.current) {
-                return;
-              }
-              const deltaX = event.clientX - panStart.current.x;
-              const deltaY = event.clientY - panStart.current.y;
-              setViewport((prev) => ({
-                ...prev,
-                x: viewStart.current.x + deltaX,
-                y: viewStart.current.y + deltaY
-              }));
-            }}
-            onWheel={(event) => {
-              event.preventDefault();
-              const rect = containerRef.current?.getBoundingClientRect();
-              if (!rect) {
-                return;
-              }
-              const delta = -event.deltaY * 0.0015;
-              const nextScale = clamp(viewport.scale + delta, 0.5, 1.6);
-              const offsetX = event.clientX - rect.left;
-              const offsetY = event.clientY - rect.top;
-              const scaleRatio = nextScale / viewport.scale;
-              setViewport((prev) => ({
-                scale: nextScale,
-                x: offsetX - scaleRatio * (offsetX - prev.x),
-                y: offsetY - scaleRatio * (offsetY - prev.y)
-              }));
-            }}
+            ref={canvasRef}
+            className="relative h-[560px] w-full overflow-auto bg-ink-900/60"
           >
             <div
-              className="absolute inset-0"
-              style={{
-                transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
-                transformOrigin: "0 0"
-              }}
+              ref={canvasInnerRef}
+              className="relative"
+              style={{ width: canvasSize.width, height: canvasSize.height }}
             >
-              <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
-                {layout.edges.map((edge) => {
-                  const source = nodeMap[edge.sourceId];
-                  const target = nodeMap[edge.targetId];
-                  if (!source || !target) {
+              <svg className="absolute inset-0 h-full w-full">
+                {mapState.edges.map((edge) => {
+                  const fromNode = nodeById[edge.fromNodeId];
+                  const toNode = nodeById[edge.toNodeId];
+                  if (!fromNode || !toNode) {
                     return null;
                   }
-                  const style = edgeStyles[edge.kind];
-                  const isActive = showActivity && edge.activity?.state === "active";
+                  const fromSize = nodeSizes[fromNode.kind];
+                  const toSize = nodeSizes[toNode.kind];
+                  const startX = fromNode.position.x + fromSize.width / 2;
+                  const startY = fromNode.position.y + fromSize.height / 2;
+                  const endX = toNode.position.x + toSize.width / 2;
+                  const endY = toNode.position.y + toSize.height / 2;
                   return (
-                    <path
+                    <line
                       key={edge.id}
-                      d={edgePath(source, target, nodeSizes)}
-                      stroke={style.stroke}
-                      strokeWidth={style.width}
-                      strokeDasharray={style.dash}
-                      fill="none"
-                      className={isActive ? "edge-path edge-path-active" : "edge-path"}
+                      x1={startX}
+                      y1={startY}
+                      x2={endX}
+                      y2={endY}
+                      stroke="rgba(56, 189, 248, 0.6)"
+                      strokeWidth={2}
                     />
                   );
                 })}
               </svg>
-
-              {layout.nodes.map((node) => {
-                const isActive = activeNodeIds.has(node.id);
-                const isPerson = node.kind === "person";
-                const nodeWidth = defaultNodeSize[node.kind].width;
+              {mapState.nodes.map((node) => {
+                const size = nodeSizes[node.kind];
+                const isSelectedForConnect = connectMode && connectFromId === node.id;
+                const personnel = node.kind === "personnel" ? personnelById[node.refId] : null;
+                const agent = node.kind === "agent" ? agentsById[node.refId] : null;
                 return (
                   <button
                     key={node.id}
-                    data-node-id={node.id}
-                    ref={(element) => {
-                      if (element) {
-                        nodeRefs.current.set(node.id, element);
-                      } else {
-                        nodeRefs.current.delete(node.id);
+                    type="button"
+                    className={`absolute rounded-2xl border px-4 py-3 text-left shadow-card transition ${
+                      node.kind === "personnel"
+                        ? "border-emerald-400/40 bg-emerald-500/10"
+                        : "border-sky-400/40 bg-sky-500/10"
+                    } ${isSelectedForConnect ? "ring-2 ring-accent-500" : ""}`}
+                    style={{ left: node.position.x, top: node.position.y, width: size.width, height: size.height }}
+                    onPointerDown={(event) => {
+                      if (event.button !== 0) {
+                        return;
                       }
+                      const bounds = canvasInnerRef.current?.getBoundingClientRect();
+                      if (!bounds) {
+                        return;
+                      }
+                      dragState.current = {
+                        id: node.id,
+                        offsetX: event.clientX - bounds.left - node.position.x,
+                        offsetY: event.clientY - bounds.top - node.position.y,
+                        didMove: false
+                      };
                     }}
-                    onClick={() => {
-                      setSelectedId(node.id);
-                      setDraftEdits({
-                        name: node.name,
-                        owner: node.owner ?? node.title ?? "",
-                        status: node.status ?? ""
-                      });
-                    }}
-                    className={`absolute rounded-2xl border text-left shadow-card transition hover:border-accent-500/60 ${
-                      isPerson
-                        ? "border-white/5 bg-ink-800/60 px-3 py-2"
-                        : "border-white/10 bg-ink-800/90 px-4 py-3"
-                    }`}
-                    style={{
-                      left: node.x,
-                      top: node.y,
-                      width: nodeWidth
-                    }}
+                    onClick={() => handleNodeClick(node.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs uppercase tracking-wide text-slate-400">{node.kind}</div>
-                      <div className="flex items-center gap-2">
-                        {isActive ? <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]" /> : null}
-                        {node.status ? (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] ${statusPill[node.status]}`}>
-                            {node.status}
-                          </span>
-                        ) : null}
+                      <div className="text-xs uppercase tracking-wide text-slate-200">
+                        {node.kind === "personnel" ? "Personnel" : "Agent"}
                       </div>
+                      <span className="text-lg">{node.kind === "personnel" ? "👤" : "🤖"}</span>
                     </div>
-                    <div className={`mt-2 ${isPerson ? "text-xs" : "text-sm"} font-semibold text-white`}>{node.name}</div>
-                    {node.owner ? <div className="mt-1 text-xs text-slate-400">{node.owner}</div> : null}
-                    {node.title ? <div className="mt-1 text-xs text-slate-500">{node.title}</div> : null}
+                    <div className="mt-1 text-sm font-semibold text-white">
+                      {node.kind === "personnel" ? personnel?.name ?? "Unknown" : agent?.name ?? "Unknown"}
+                    </div>
+                    <div className="text-xs text-slate-300">
+                      {node.kind === "personnel"
+                        ? personnel?.title || personnel?.team || ""
+                        : agent?.purpose || agent?.module || ""}
+                    </div>
                   </button>
                 );
               })}
+              {emptyCanvas ? (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+                  No nodes yet—add personnel or agents from the sidebar to begin.
+                </div>
+              ) : null}
             </div>
           </div>
-        </div>
-
-        <div className="lg:hidden space-y-4">
-          {filteredData.orgUnits.map((orgUnit) => (
-            <Card key={orgUnit.id} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase text-slate-400">Org Unit</div>
-                  <div className="text-lg font-semibold">{orgUnit.name}</div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs ${statusPill[orgUnit.status as OrgStatus]}`}>
-                  {orgUnit.status}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {filteredData.modules.filter((module) => module.orgUnitId === orgUnit.id).map((module) => (
-                  <button
-                    key={module.id}
-                    onClick={() => {
-                      const merged = withOverride(module.id, {
-                        id: module.id,
-                        name: module.name,
-                        kind: "module",
-                        status: module.status as OrgStatus,
-                        owner: orgMap.people.find((person) => person.id === module.ownerPersonId)?.name,
-                        description: module.description,
-                        orgUnitId: module.orgUnitId,
-                        ownerPersonId: module.ownerPersonId,
-                        domain: module.domain as ModuleDomain,
-                        outputs: module.outputs as Module["outputs"],
-                        steps: module.steps as Module["steps"],
-                        activity: module.activity as Module["activity"]
-                      });
-                      setSelectedId(module.id);
-                      setDraftEdits({
-                        name: merged.name,
-                        owner: merged.owner ?? "",
-                        status: merged.status ?? ""
-                      });
-                    }}
-                    className="w-full text-left rounded-xl border border-white/10 bg-ink-800/70 px-4 py-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium">{module.name}</div>
-                        <div className="text-xs text-slate-400">{orgMap.people.find((person) => person.id === module.ownerPersonId)?.name}</div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] ${statusPill[module.status as OrgStatus]}`}>
-                        {module.status}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {selectedNode ? (
-          <aside className="lg:absolute lg:right-0 lg:top-0 lg:h-full w-full lg:w-[360px] bg-ink-900/95 border border-white/10 rounded-2xl p-6 lg:mt-0 mt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase text-slate-400">{selectedNode.data.kind}</div>
-                <div className="text-xl font-semibold">{selectedNode.data.name}</div>
-              </div>
-              <Button variant="ghost" onClick={() => setSelectedId(null)}>Close</Button>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <Card className="space-y-2">
-                <div className="text-sm text-slate-300">Overview</div>
-                {selectedNode.data.status ? (
-                  <div className={`inline-flex px-3 py-1 rounded-full text-xs ${statusPill[selectedNode.data.status]}`}>
-                    {selectedNode.data.status}
-                  </div>
-                ) : null}
-                {selectedNode.data.owner ? <div className="text-sm text-slate-200">Owner: {selectedNode.data.owner}</div> : null}
-                {selectedNode.data.title ? <div className="text-sm text-slate-200">Role: {selectedNode.data.title}</div> : null}
-                {selectedNode.data.domain ? <div className="text-sm text-slate-200">Domain: {selectedNode.data.domain}</div> : null}
-                {selectedNode.data.description ? <p className="text-sm text-slate-400">{selectedNode.data.description}</p> : null}
-                {selectedNode.data.kind === "orgUnit" ? (
-                  <div className="text-sm text-slate-400">
-                    Modules: {filteredData.modules.filter((module) => module.orgUnitId === selectedNode.data.id).length}
-                    {showPeople ? ` · People: ${filteredData.people.filter((person) => person.orgUnitId === selectedNode.data.id).length}` : null}
-                  </div>
-                ) : null}
-                {selectedNode.data.kind === "person" ? (
-                  <div className="text-sm text-slate-400">
-                    Org Unit: {orgMap.orgUnits.find((orgUnit) => orgUnit.id === selectedNode.data.orgUnitId)?.name ?? "Unassigned"}
-                  </div>
-                ) : null}
-              </Card>
-
-              <Card className="space-y-2">
-                <div className="text-sm text-slate-300">Recent Runs</div>
-                {selectedNode.data.activity && selectedNode.data.activity.length ? (
-                  <ul className="space-y-2 text-sm">
-                    {selectedNode.data.activity.map((run) => (
-                      <li key={run.id} className="flex items-center justify-between">
-                        <span>{run.title}</span>
-                        <span className="text-xs text-slate-400">{run.date}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm text-slate-500">No recent activity.</div>
-                )}
-              </Card>
-
-              <Card className="space-y-2">
-                <div className="text-sm text-slate-300">Artifacts</div>
-                {selectedNode.data.outputs && selectedNode.data.outputs.length ? (
-                  <ul className="space-y-2 text-sm">
-                    {selectedNode.data.outputs.map((artifact) => (
-                      <li key={artifact.id} className="flex items-center justify-between">
-                        <span>{artifact.title}</span>
-                        <span className="text-xs text-slate-400">{artifact.type}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm text-slate-500">No artifacts yet.</div>
-                )}
-              </Card>
-
-              {selectedNode.data.kind === "person" ? (
-                <Card className="space-y-2">
-                  <div className="text-sm text-slate-300">Module Ownership</div>
-                  <div className="space-y-2 text-sm text-slate-400">
-                    {validModules.filter((module) => module.ownerPersonId === selectedNode.data.id).length ? (
-                      validModules
-                        .filter((module) => module.ownerPersonId === selectedNode.data.id)
-                        .map((module) => (
-                          <div key={module.id}>{module.name}</div>
-                        ))
-                    ) : (
-                      <div>No assigned modules.</div>
-                    )}
-                  </div>
-                </Card>
-              ) : null}
-
-              <Card className="space-y-3">
-                <div className="text-sm text-slate-300">Settings</div>
-                <Input
-                  label="Name"
-                  value={draftEdits.name}
-                  onChange={(event) => setDraftEdits((prev) => ({ ...prev, name: event.target.value }))}
-                />
-                <Input
-                  label={selectedNode.data.kind === "person" ? "Role" : "Owner"}
-                  value={draftEdits.owner}
-                  onChange={(event) => setDraftEdits((prev) => ({ ...prev, owner: event.target.value }))}
-                />
-                <Select
-                  label="Status"
-                  value={draftEdits.status}
-                  onChange={(event) => setDraftEdits((prev) => ({ ...prev, status: event.target.value }))}
-                >
-                  <option value="">Select status</option>
-                  {statusOptions.filter((status) => status !== "all").map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </Select>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (!selectedId) {
-                      return;
-                    }
-                    setOverrides((prev) => ({
-                      ...prev,
-                      [selectedId]: {
-                        name: draftEdits.name,
-                        status: draftEdits.status as OrgStatus,
-                        ...(selectedNode.data.kind === "person"
-                          ? { title: draftEdits.owner }
-                          : { owner: draftEdits.owner })
-                      }
-                    }));
-                  }}
-                >
-                  Save changes
-                </Button>
-              </Card>
-            </div>
-          </aside>
-        ) : null}
+          <div className="border-t border-white/5 px-6 py-3 text-xs text-slate-400">
+            Connections persist locally under <span className="text-slate-300">{storageKey}</span>.
+          </div>
+        </Card>
       </div>
-      <style jsx global>{`
-        .edge-path {
-          transition: stroke 200ms ease, opacity 200ms ease;
-        }
-        .edge-path-active {
-          stroke-dasharray: 8 8;
-          animation: edgePulse 2s ease-in-out infinite;
-        }
-        @keyframes edgePulse {
-          0% {
-            stroke-dashoffset: 16;
-            opacity: 0.6;
-          }
-          50% {
-            stroke-dashoffset: 0;
-            opacity: 1;
-          }
-          100% {
-            stroke-dashoffset: -16;
-            opacity: 0.6;
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .edge-path-active {
-            animation: none;
-          }
-        }
-      `}</style>
+
+      {toast ? (
+        <div className="fixed bottom-6 right-6 rounded-lg border border-white/10 bg-ink-800 px-4 py-2 text-sm text-slate-100 shadow-lg">
+          {toast.message}
+        </div>
+      ) : null}
     </div>
   );
 }

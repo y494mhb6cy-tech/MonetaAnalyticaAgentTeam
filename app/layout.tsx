@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Sidebar } from "../components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "Moneta Analytica — Agents",
-  description: "Moneta Analytica Agents MVP"
+  title: "Moneta Analytica OS — Agents",
+  description: "Moneta Analytica OS Agents MVP"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

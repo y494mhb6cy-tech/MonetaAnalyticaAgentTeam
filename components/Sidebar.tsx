@@ -15,8 +15,8 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-ink-800 border-r border-white/5 p-6 flex flex-col gap-8">
       <div>
-        <div className="text-xl font-semibold tracking-wide">Moneta Analytica</div>
-        <div className="text-xs text-slate-400 mt-1">Agents</div>
+        <div className="text-xl font-semibold tracking-wide">Moneta Analytica OS</div>
+        <div className="text-xs text-slate-400 mt-1">Operating System</div>
       </div>
       <nav className="flex flex-col gap-2">
         {items.map((item) => {
