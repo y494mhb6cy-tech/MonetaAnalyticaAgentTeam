@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { getStore, upsertChain } from "../../../lib/store";
 import { Chain } from "../../../lib/types";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const store = await getStore();
   return NextResponse.json({ chains: store.chains });

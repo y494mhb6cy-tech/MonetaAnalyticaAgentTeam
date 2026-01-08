@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { getStore, upsertTask } from "../../../lib/store";
 import { TaskRabbit } from "../../../lib/types";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const store = await getStore();
   return NextResponse.json({ tasks: store.tasks, contractDefaults: store.contractDefaults });
