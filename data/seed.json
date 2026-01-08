@@ -1,0 +1,182 @@
+{
+  "contractDefaults": {
+    "profit": [
+      "increase margin",
+      "reduce cost",
+      "accelerate cash flow",
+      "eliminate waste"
+    ],
+    "process": [
+      "clarify a workflow",
+      "standardize a step",
+      "reduce ambiguity"
+    ],
+    "objectivity": [
+      "remove subjectivity",
+      "surface truth",
+      "enforce a rule"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task_exec_ops",
+      "name": "Executive Ops Summary",
+      "description": "Summarize operational signals, bottlenecks, and required actions for leadership review.",
+      "domain": "Ops",
+      "defaultMode": "standard",
+      "outputFormat": ["docx", "pdf"],
+      "contract": {
+        "profit": [
+          "increase margin",
+          "reduce cost",
+          "accelerate cash flow",
+          "eliminate waste"
+        ],
+        "process": [
+          "clarify a workflow",
+          "standardize a step",
+          "reduce ambiguity"
+        ],
+        "objectivity": [
+          "remove subjectivity",
+          "surface truth",
+          "enforce a rule"
+        ]
+      },
+      "promptTemplate": "Generate an executive ops summary from the provided inputs.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "task_ar_collections",
+      "name": "AR Collections Brief",
+      "description": "Highlight overdue exposure, prioritize accounts, and recommend escalation steps.",
+      "domain": "Finance",
+      "defaultMode": "fast",
+      "outputFormat": ["docx", "pdf"],
+      "contract": {
+        "profit": [
+          "increase margin",
+          "reduce cost",
+          "accelerate cash flow",
+          "eliminate waste"
+        ],
+        "process": [
+          "clarify a workflow",
+          "standardize a step",
+          "reduce ambiguity"
+        ],
+        "objectivity": [
+          "remove subjectivity",
+          "surface truth",
+          "enforce a rule"
+        ]
+      },
+      "promptTemplate": "Generate an AR collections brief from the provided inputs.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "task_close_package",
+      "name": "Close Package Narrative",
+      "description": "Provide a close package narrative highlighting variances and risks.",
+      "domain": "Finance",
+      "defaultMode": "standard",
+      "outputFormat": ["docx", "pdf"],
+      "contract": {
+        "profit": [
+          "increase margin",
+          "reduce cost",
+          "accelerate cash flow",
+          "eliminate waste"
+        ],
+        "process": [
+          "clarify a workflow",
+          "standardize a step",
+          "reduce ambiguity"
+        ],
+        "objectivity": [
+          "remove subjectivity",
+          "surface truth",
+          "enforce a rule"
+        ]
+      },
+      "promptTemplate": "Generate a close package narrative from the provided inputs.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "task_onboarding",
+      "name": "Onboarding Pack Draft",
+      "description": "Draft a structured onboarding pack for new team members.",
+      "domain": "HR",
+      "defaultMode": "standard",
+      "outputFormat": ["docx", "pdf"],
+      "contract": {
+        "profit": [
+          "increase margin",
+          "reduce cost",
+          "accelerate cash flow",
+          "eliminate waste"
+        ],
+        "process": [
+          "clarify a workflow",
+          "standardize a step",
+          "reduce ambiguity"
+        ],
+        "objectivity": [
+          "remove subjectivity",
+          "surface truth",
+          "enforce a rule"
+        ]
+      },
+      "promptTemplate": "Generate an onboarding pack draft from the provided inputs.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "task_sop",
+      "name": "SOP Generator",
+      "description": "Create a clear SOP with steps, owners, and expected outcomes.",
+      "domain": "General",
+      "defaultMode": "deep",
+      "outputFormat": ["docx", "pdf"],
+      "contract": {
+        "profit": [
+          "increase margin",
+          "reduce cost",
+          "accelerate cash flow",
+          "eliminate waste"
+        ],
+        "process": [
+          "clarify a workflow",
+          "standardize a step",
+          "reduce ambiguity"
+        ],
+        "objectivity": [
+          "remove subjectivity",
+          "surface truth",
+          "enforce a rule"
+        ]
+      },
+      "promptTemplate": "Generate an SOP from the provided inputs.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "chains": [
+    {
+      "id": "chain_month_end",
+      "name": "Month-End Close Chain",
+      "description": "Run a sequence of finance narratives for leadership close review.",
+      "steps": [
+        { "taskId": "task_close_package" },
+        { "taskId": "task_ar_collections", "modeOverride": "fast" }
+      ],
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "runs": [],
+  "artifacts": []
+}
