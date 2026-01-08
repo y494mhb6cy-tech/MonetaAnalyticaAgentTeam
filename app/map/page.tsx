@@ -31,14 +31,16 @@ type Module = {
   kind: "module";
   name: string;
   domain: ModuleDomain;
-  ownerPersonId?: string;
+  ownerPersonId: string;
   orgUnitId?: string;
-  status?: OrgStatus;
-  description?: string;
-  outputs?: Array<{ id: string; title: string; type: "pdf" | "pptx" | "link"; url?: string }>;
-  steps?: Array<{ id: string; title: string; qaRequired?: boolean }>;
-  activity?: Array<{ id: string; title: string; date: string; status: string }>;
+  status: OrgStatus;
+  description: string;
+  outputs: Array<{ id: string; title: string; type: "pdf" | "pptx" | "link"; url?: string }>;
+  steps: Array<{ id: string; title: string; qaRequired?: boolean }>;
+  activity: Array<{ id: string; title: string; date: string; status: string }>;
 };
+
+type ModuleWithOrgUnit = Module & { orgUnitId: string };
 
 type Person = {
   id: string;
@@ -54,10 +56,10 @@ type Link = {
   sourceId: string;
   targetId: string;
   kind: "reportsTo" | "owns" | "uses";
-  activity?: {
+  activity: {
     state: "active" | "idle";
-    lastSeenAt?: string;
-    intensity?: number;
+    lastSeenAt: string;
+    intensity: number;
   };
 };
 
@@ -79,7 +81,7 @@ type MapNodeData = {
 
 type PositionedNode = MapNodeData & { x: number; y: number };
 
-type MapEdge = Link;
+type MapEdge = Omit<Link, "activity"> & { activity?: Link["activity"] };
 
 type Viewport = { x: number; y: number; scale: number };
 
@@ -96,17 +98,17 @@ const isNonEmptyString = (value: unknown): value is string => typeof value === "
 const orgUnitIds = new Set(orgMap.orgUnits.map((orgUnit) => orgUnit.id));
 const personIds = new Set(orgMap.people.map((person) => person.id));
 
-const isValidModule = (module: (typeof orgMap.modules)[number]): module is Module => {
+const isValidModule = (module: (typeof orgMap.modules)[number]): module is ModuleWithOrgUnit => {
   if (!module || typeof module !== "object") {
     return false;
   }
   if (!isNonEmptyString(module.id) || module.kind !== "module" || !isNonEmptyString(module.name)) {
     return false;
   }
-  if (!moduleDomainValues.includes(module.domain)) {
+  if (!moduleDomainValues.includes(module.domain as ModuleDomain)) {
     return false;
   }
-  if (!isNonEmptyString(module.orgUnitId) || !orgUnitIds.has(module.orgUnitId)) {
+  if (typeof module.orgUnitId !== "string" || !orgUnitIds.has(module.orgUnitId)) {
     return false;
   }
   if (module.ownerPersonId && !personIds.has(module.ownerPersonId)) {
@@ -118,7 +120,7 @@ const isValidModule = (module: (typeof orgMap.modules)[number]): module is Modul
   return true;
 };
 
-const validModules = orgMap.modules.filter(isValidModule);
+const validModules: ModuleWithOrgUnit[] = orgMap.modules.filter(isValidModule);
 const moduleIds = new Set(validModules.map((module) => module.id));
 
 const nodeIds = new Set([orgMap.root.id, ...orgMap.orgUnits.map((orgUnit) => orgUnit.id), ...personIds, ...moduleIds]);
@@ -130,7 +132,7 @@ const isValidLink = (link: (typeof orgMap.links)[number]): link is Link => {
   if (!isNonEmptyString(link.id) || !isNonEmptyString(link.sourceId) || !isNonEmptyString(link.targetId)) {
     return false;
   }
-  if (!linkKindValues.includes(link.kind)) {
+  if (!linkKindValues.includes(link.kind as Link["kind"])) {
     return false;
   }
   if (!nodeIds.has(link.sourceId) || !nodeIds.has(link.targetId)) {
@@ -139,13 +141,13 @@ const isValidLink = (link: (typeof orgMap.links)[number]): link is Link => {
   if (link.kind === "uses" && (!personIds.has(link.sourceId) || !moduleIds.has(link.targetId))) {
     return false;
   }
-  if (link.activity) {
-    if (!["active", "idle"].includes(link.activity.state)) {
-      return false;
-    }
-    if (link.activity.intensity !== undefined && typeof link.activity.intensity !== "number") {
-      return false;
-    }
+  if (
+    !link.activity ||
+    !["active", "idle"].includes(link.activity.state) ||
+    typeof link.activity.lastSeenAt !== "string" ||
+    typeof link.activity.intensity !== "number"
+  ) {
+    return false;
   }
   return true;
 };
