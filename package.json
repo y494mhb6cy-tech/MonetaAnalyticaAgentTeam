@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "engines": {
+    "node": "20.x"
+  },
+  "packageManager": "npm@10.8.1",
   "dependencies": {
     "clsx": "^2.1.1",
     "docx": "^8.5.0",
