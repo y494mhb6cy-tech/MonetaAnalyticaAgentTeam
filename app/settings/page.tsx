@@ -10,7 +10,7 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Settings"
-        subtitle="Configure Moneta Analytica operational controls and deployment details."
+        subtitle="Configure Moneta Analytica OS operational controls and deployment details."
       />
 
       <div className="grid lg:grid-cols-2 gap-6">

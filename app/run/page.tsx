@@ -122,7 +122,7 @@ export default function RunPage() {
     <div className="space-y-8">
       <PageHeader
         title="Run an Agent"
-        subtitle="Launch a single Agent or a Chain with the Moneta Analytica contract injected by default."
+        subtitle="Launch a single Agent or a Chain with the Moneta Analytica OS contract injected by default."
       />
 
       <div className="grid lg:grid-cols-[2fr,1fr] gap-6">
