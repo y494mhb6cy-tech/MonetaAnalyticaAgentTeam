@@ -1,0 +1,157 @@
+{
+  "root": {
+    "id": "root-moneta",
+    "name": "Moneta Analytica",
+    "type": "root",
+    "status": "Operational",
+    "owner": "Executive Office",
+    "description": "Enterprise-wide agent mesh for profit expansion, process rigor, and objective output."
+  },
+  "groups": [
+    {
+      "id": "group-finance",
+      "name": "Finance",
+      "status": "Scaling",
+      "owner": "CFO",
+      "description": "Capital strategy, planning, and financial intelligence."
+    },
+    {
+      "id": "group-ops",
+      "name": "Operations",
+      "status": "Operational",
+      "owner": "COO",
+      "description": "Delivery orchestration, tooling, and execution readiness."
+    },
+    {
+      "id": "group-hr",
+      "name": "People",
+      "status": "Focused",
+      "owner": "Chief People Officer",
+      "description": "Talent systems, incentives, and org health."
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent-fin-01",
+      "groupId": "group-finance",
+      "name": "Margin Sentinel",
+      "status": "Active",
+      "owner": "Ava Chen",
+      "description": "Tracks margin delta across product lines and flags leakage.",
+      "runs": [
+        { "id": "run-fin-1", "title": "Weekly margin pulse", "date": "2024-05-06", "status": "Completed" },
+        { "id": "run-fin-2", "title": "SKU profitability snapshot", "date": "2024-05-04", "status": "Completed" }
+      ],
+      "artifacts": [
+        { "id": "artifact-fin-1", "name": "Margin Pulse Brief", "type": "pdf", "date": "2024-05-06" }
+      ]
+    },
+    {
+      "id": "agent-fin-02",
+      "groupId": "group-finance",
+      "name": "Forecast Architect",
+      "status": "Active",
+      "owner": "Priya Singh",
+      "description": "Builds rolling forecasts and scenario plans.",
+      "runs": [
+        { "id": "run-fin-3", "title": "Q3 forecast refresh", "date": "2024-05-05", "status": "Completed" }
+      ],
+      "artifacts": [
+        { "id": "artifact-fin-2", "name": "Forecast Scenarios", "type": "docx", "date": "2024-05-05" }
+      ]
+    },
+    {
+      "id": "agent-fin-03",
+      "groupId": "group-finance",
+      "name": "Risk Auditor",
+      "status": "Idle",
+      "owner": "Leo Martinez",
+      "description": "Audits vendor risk and contract exposure.",
+      "runs": [],
+      "artifacts": []
+    },
+    {
+      "id": "agent-ops-01",
+      "groupId": "group-ops",
+      "name": "Launch Pilot",
+      "status": "Active",
+      "owner": "Nora Park",
+      "description": "Coordinates launch readiness checklists and cross-team alignment.",
+      "runs": [
+        { "id": "run-ops-1", "title": "Launch readiness 5/05", "date": "2024-05-05", "status": "Completed" }
+      ],
+      "artifacts": [
+        { "id": "artifact-ops-1", "name": "Launch Brief", "type": "pdf", "date": "2024-05-05" }
+      ]
+    },
+    {
+      "id": "agent-ops-02",
+      "groupId": "group-ops",
+      "name": "Quality Marshal",
+      "status": "Active",
+      "owner": "Omar Hayes",
+      "description": "Detects process drift and coordinates fixes.",
+      "runs": [
+        { "id": "run-ops-2", "title": "QC drift scan", "date": "2024-05-03", "status": "Completed" }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": "agent-ops-03",
+      "groupId": "group-ops",
+      "name": "Vendor Relay",
+      "status": "Paused",
+      "owner": "Jin Lee",
+      "description": "Manages vendor SLAs and escalation pathways.",
+      "runs": [],
+      "artifacts": []
+    },
+    {
+      "id": "agent-hr-01",
+      "groupId": "group-hr",
+      "name": "Talent Pulse",
+      "status": "Active",
+      "owner": "Maya Ortiz",
+      "description": "Synthesizes engagement signals and retention risk.",
+      "runs": [
+        { "id": "run-hr-1", "title": "Engagement pulse", "date": "2024-05-02", "status": "Completed" }
+      ],
+      "artifacts": [
+        { "id": "artifact-hr-1", "name": "Engagement Brief", "type": "pdf", "date": "2024-05-02" }
+      ]
+    },
+    {
+      "id": "agent-hr-02",
+      "groupId": "group-hr",
+      "name": "Comp Strategist",
+      "status": "Active",
+      "owner": "Ethan Cole",
+      "description": "Aligns compensation bands to market data.",
+      "runs": [
+        { "id": "run-hr-2", "title": "Band calibration", "date": "2024-05-01", "status": "Completed" }
+      ],
+      "artifacts": []
+    },
+    {
+      "id": "agent-hr-03",
+      "groupId": "group-hr",
+      "name": "Hiring Navigator",
+      "status": "Idle",
+      "owner": "Rina Patel",
+      "description": "Guides hiring funnel and sourcing signals.",
+      "runs": [],
+      "artifacts": []
+    }
+  ],
+  "people": [
+    { "id": "person-ava", "agentId": "agent-fin-01", "name": "Ava Chen", "title": "Finance Lead" },
+    { "id": "person-priya", "agentId": "agent-fin-02", "name": "Priya Singh", "title": "FP&A Director" },
+    { "id": "person-leo", "agentId": "agent-fin-03", "name": "Leo Martinez", "title": "Risk Analyst" },
+    { "id": "person-nora", "agentId": "agent-ops-01", "name": "Nora Park", "title": "Ops Program Manager" },
+    { "id": "person-omar", "agentId": "agent-ops-02", "name": "Omar Hayes", "title": "Quality Lead" },
+    { "id": "person-jin", "agentId": "agent-ops-03", "name": "Jin Lee", "title": "Vendor Manager" },
+    { "id": "person-maya", "agentId": "agent-hr-01", "name": "Maya Ortiz", "title": "People Ops Lead" },
+    { "id": "person-ethan", "agentId": "agent-hr-02", "name": "Ethan Cole", "title": "Compensation Manager" },
+    { "id": "person-rina", "agentId": "agent-hr-03", "name": "Rina Patel", "title": "Recruiting Lead" }
+  ]
+}

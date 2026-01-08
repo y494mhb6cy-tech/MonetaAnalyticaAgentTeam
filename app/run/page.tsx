@@ -71,7 +71,7 @@ export default function RunPage() {
     }
 
     if (!selectedTaskId && !selectedChainId) {
-      setError("Select a Task Rabbit or Chain before running.");
+      setError("Select an Agent or Chain before running.");
       setLoading(false);
       return;
     }
@@ -121,14 +121,14 @@ export default function RunPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Run a Task Rabbit"
-        subtitle="Launch a single Task Rabbit or a Chain with the Moneta Analytica contract injected by default."
+        title="Run an Agent"
+        subtitle="Launch a single Agent or a Chain with the Moneta Analytica contract injected by default."
       />
 
       <div className="grid lg:grid-cols-[2fr,1fr] gap-6">
         <Card className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
-            <Select label="Task Rabbit" value={selectedTaskId} onChange={(event) => {
+            <Select label="Agent" value={selectedTaskId} onChange={(event) => {
               setSelectedTaskId(event.target.value);
               setSelectedChainId("");
               const task = tasks.find((item) => item.id === event.target.value);
