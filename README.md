@@ -33,3 +33,4 @@ Set environment variables in Netlify **Site settings → Environment variables**
 - Task Rabbits, Chains, Runs, and Artifacts are stored in a JSON store under `/tmp` at runtime with a seed file committed in `data/seed.json`.
 - Deep Mode is disabled by default. Enable it in **Settings** before running a deep task.
 - DOCX and PDF outputs are generated server-side with Moneta Analytica branding.
+- The Agent Map includes overlay toggles for People and live Activity, with animated active edges when Activity is enabled.

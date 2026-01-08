@@ -64,13 +64,19 @@ export function Select({ label, children, ...props }: React.SelectHTMLAttributes
   );
 }
 
-export function Button({ children, variant = "primary", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" }) {
+export function Button({
+  children,
+  variant = "primary",
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" }) {
   return (
     <button
       className={clsx(
         "px-4 py-2 rounded-lg text-sm font-medium transition",
         variant === "primary" && "bg-accent-500 text-ink-900 hover:bg-accent-500/90",
-        variant === "ghost" && "bg-white/5 text-white hover:bg-white/10"
+        variant === "ghost" && "bg-white/5 text-white hover:bg-white/10",
+        className
       )}
       {...props}
     >
