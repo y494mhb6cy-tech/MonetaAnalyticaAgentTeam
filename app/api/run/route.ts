@@ -3,7 +3,7 @@ import { addArtifacts, addRun, getStore, newId } from "../../../lib/store";
 import { estimateCostBand, stringifyMarkdown } from "../../../lib/run-utils";
 import { buildDocx, buildPdf } from "../../../lib/artifacts";
 import { runTaskWithProvider } from "../../../lib/ai";
-import { Mode, Run, RunInput, StructuredOutput } from "../../../lib/types";
+import type { Mode, Run, RunInput, StructuredOutput } from "../../../lib/types";
 
 type RunRequest = {
   taskId?: string;
