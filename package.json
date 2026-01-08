@@ -2,6 +2,9 @@
   "name": "moneta-analytica-task-rabbits",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.21.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

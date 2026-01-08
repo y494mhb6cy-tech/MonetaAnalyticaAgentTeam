@@ -5,12 +5,16 @@ import { buildDocx, buildPdf } from "../../../lib/artifacts";
 import { runTaskWithProvider } from "../../../lib/ai";
 import { Mode, Run, RunInput, StructuredOutput } from "../../../lib/types";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type RunRequest = {
   taskId?: string;
   chainId?: string;
   mode: Mode;
   inputs: RunInput[];
   deepModeEnabled?: boolean;
+  requireLive?: boolean;
 };
 
 function ensureInputs(inputs: RunInput[]) {
@@ -48,6 +52,13 @@ export async function POST(request: Request) {
 
     if (body.mode === "deep" && !body.deepModeEnabled) {
       return NextResponse.json({ error: "Deep mode is disabled in Settings." }, { status: 400 });
+    }
+
+    if (body.requireLive && !process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY is required for live runs. Set it in the environment or disable live mode." },
+        { status: 400 }
+      );
     }
 
     const store = await getStore();

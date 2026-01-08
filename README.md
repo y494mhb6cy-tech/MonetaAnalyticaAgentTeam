@@ -19,6 +19,7 @@ npm start
 ## Environment Variables
 
 - `OPENAI_API_KEY` (optional) — when set, the app calls OpenAI. When missing, the app uses a deterministic mock response.
+- See `env.example` for a starter template.
 
 ## Netlify
 
