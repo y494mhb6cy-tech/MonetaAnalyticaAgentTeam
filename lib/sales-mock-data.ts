@@ -12,6 +12,7 @@ import type {
   CompanyTaskRevenueImpact,
   CompanyTaskPriority,
   TeamMetrics,
+  RoleLevel,
 } from "./maos-types";
 
 // Deterministic seeded random number generator
@@ -57,68 +58,76 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-// Sales company specific data
+// Sales company specific data with hierarchy
 const SALES_TEAMS = [
   {
     id: "leadership",
     name: "Leadership",
     color: "#9333ea",
-    roles: [
-      "CEO",
-      "VP of Sales",
-      "CFO",
-      "Director of Sales",
-      "Director of HR",
+    structure: [
+      { role: "CEO", level: "Executive" as RoleLevel, count: 1, supervisorOffset: null },
+      { role: "VP of Sales", level: "Executive" as RoleLevel, count: 1, supervisorOffset: 0 },
+      { role: "CFO", level: "Executive" as RoleLevel, count: 1, supervisorOffset: 0 },
+      { role: "Director of Sales", level: "Director" as RoleLevel, count: 1, supervisorOffset: 1 },
+      { role: "Director of HR", level: "Director" as RoleLevel, count: 1, supervisorOffset: 0 },
     ],
-    peopleCount: 5,
+    hasLead: false, // No team lead, these ARE the leaders
   },
   {
     id: "admin-orders",
     name: "Admin / Order Writing",
     color: "#3b82f6",
-    roles: [
-      "Order Processing Specialist",
-      "Order Entry Clerk",
-      "Customer Service Rep",
-      "Operations Coordinator",
+    structure: [
+      { role: "Operations Manager", level: "Manager" as RoleLevel, count: 1, supervisorOffset: null }, // Reports to CFO
+      { role: "Order Processing Lead", level: "Manager" as RoleLevel, count: 2, supervisorOffset: 0 },
+      { role: "Order Processing Specialist", level: "IC" as RoleLevel, count: 10, supervisorOffset: 1 }, // Reports to leads
+      { role: "Order Entry Clerk", level: "IC" as RoleLevel, count: 8, supervisorOffset: 1 },
+      { role: "Customer Service Rep", level: "IC" as RoleLevel, count: 4, supervisorOffset: 1 },
     ],
-    peopleCount: 25,
+    hasLead: true,
+    leadIndex: 0, // Operations Manager is the lead
   },
   {
     id: "remote-sales-a",
     name: "Remote Sales Team A",
     color: "#10b981",
-    roles: [
-      "Sales Representative",
-      "Account Executive",
-      "Business Development Rep",
-      "Sales Manager",
+    structure: [
+      { role: "Sales Manager", level: "Manager" as RoleLevel, count: 1, supervisorOffset: null }, // Reports to Director of Sales
+      { role: "Team Lead", level: "Manager" as RoleLevel, count: 2, supervisorOffset: 0 },
+      { role: "Account Executive", level: "IC" as RoleLevel, count: 12, supervisorOffset: 1 }, // Reports to team leads
+      { role: "Business Development Rep", level: "IC" as RoleLevel, count: 12, supervisorOffset: 1 },
+      { role: "Sales Representative", level: "IC" as RoleLevel, count: 8, supervisorOffset: 1 },
     ],
-    peopleCount: 35,
+    hasLead: true,
+    leadIndex: 0, // Sales Manager is the lead
   },
   {
     id: "remote-sales-b",
     name: "Remote Sales Team B",
     color: "#f59e0b",
-    roles: [
-      "Sales Representative",
-      "Account Executive",
-      "Business Development Rep",
-      "Sales Manager",
+    structure: [
+      { role: "Sales Manager", level: "Manager" as RoleLevel, count: 1, supervisorOffset: null }, // Reports to Director of Sales
+      { role: "Team Lead", level: "Manager" as RoleLevel, count: 2, supervisorOffset: 0 },
+      { role: "Account Executive", level: "IC" as RoleLevel, count: 12, supervisorOffset: 1 },
+      { role: "Business Development Rep", level: "IC" as RoleLevel, count: 12, supervisorOffset: 1 },
+      { role: "Sales Representative", level: "IC" as RoleLevel, count: 8, supervisorOffset: 1 },
     ],
-    peopleCount: 35,
+    hasLead: true,
+    leadIndex: 0, // Sales Manager is the lead
   },
   {
     id: "physical-sales",
     name: "Physical Location Sales",
     color: "#ec4899",
-    roles: [
-      "Sales Associate",
-      "Store Manager",
-      "Sales Lead",
-      "Customer Success Specialist",
+    structure: [
+      { role: "Regional Manager", level: "Manager" as RoleLevel, count: 1, supervisorOffset: null }, // Reports to VP of Sales
+      { role: "Store Manager", level: "Manager" as RoleLevel, count: 3, supervisorOffset: 0 },
+      { role: "Sales Lead", level: "IC" as RoleLevel, count: 6, supervisorOffset: 1 }, // Reports to store managers
+      { role: "Sales Associate", level: "IC" as RoleLevel, count: 7, supervisorOffset: 1 },
+      { role: "Customer Success Specialist", level: "IC" as RoleLevel, count: 3, supervisorOffset: 1 },
     ],
-    peopleCount: 20,
+    hasLead: true,
+    leadIndex: 0, // Regional Manager is the lead
   },
 ];
 
@@ -197,7 +206,121 @@ const LEAD_SOURCES = ["Website", "Referral", "Cold Call", "LinkedIn", "Conferenc
 export function generateSalesOrgData(seed: number = 42): OrgMapData {
   const rand = seededRandom(seed);
 
-  // Generate departments/teams
+  // Generate people across teams with hierarchical relationships
+  const people: OrgPerson[] = [];
+  let personIndex = 0;
+
+  // Track team leads for department assignment
+  const teamLeads: Record<string, string> = {};
+
+  // CEO will be the first person generated (from leadership team)
+  let ceoId: string | null = null;
+  let vpSalesId: string | null = null;
+  let cfoId: string | null = null;
+  let directorSalesId: string | null = null;
+  let directorHRId: string | null = null;
+
+  SALES_TEAMS.forEach((team) => {
+    const teamPeople: OrgPerson[] = [];
+    let teamLeadId: string | null = null;
+
+    // Generate people based on structure
+    team.structure.forEach((roleSpec, roleIdx) => {
+      for (let i = 0; i < roleSpec.count; i++) {
+        const firstName = FIRST_NAMES[personIndex % FIRST_NAMES.length];
+        const lastNameIdx = Math.floor(personIndex / FIRST_NAMES.length) % LAST_NAMES.length;
+        const lastName = LAST_NAMES[(lastNameIdx + hashString(team.id)) % LAST_NAMES.length];
+        const name = `${firstName} ${lastName}`;
+        const id = `person-${team.id}-${teamPeople.length}`;
+        const personRand = seededRandom(hashString(id));
+
+        // Determine supervisor based on structure
+        let supervisorId: string | undefined = undefined;
+
+        if (roleSpec.supervisorOffset !== null) {
+          // Find supervisor within team
+          if (roleSpec.supervisorOffset < teamPeople.length) {
+            // For ICs and mid-level managers, find their supervisor within the team
+            // For multiple people in same role, distribute them across available supervisors
+            const supervisorPool: OrgPerson[] = [];
+            for (let j = 0; j < teamPeople.length; j++) {
+              const potentialSupervisor = teamPeople[j];
+              if (potentialSupervisor.roleLevel === "Manager" || potentialSupervisor.roleLevel === "Director") {
+                supervisorPool.push(potentialSupervisor);
+              }
+            }
+            if (supervisorPool.length > 0) {
+              supervisorId = supervisorPool[i % supervisorPool.length].id;
+            } else if (teamPeople.length > 0) {
+              supervisorId = teamPeople[0].id; // Default to team lead
+            }
+          }
+        } else {
+          // Top-level role in team - assign to org leadership
+          if (team.id === "admin-orders") {
+            supervisorId = cfoId || undefined;
+          } else if (team.id === "remote-sales-a" || team.id === "remote-sales-b") {
+            supervisorId = directorSalesId || undefined;
+          } else if (team.id === "physical-sales") {
+            supervisorId = vpSalesId || undefined;
+          }
+        }
+
+        const person: OrgPerson = {
+          id,
+          name,
+          role: roleSpec.role,
+          departmentId: team.id,
+          presence: pickPresence(personRand),
+          leverageScore: Math.floor(personRand() * 100),
+          avatarInitials: getInitials(name),
+          roleLevel: roleSpec.level,
+          supervisorId,
+        };
+
+        // Track leadership IDs for cross-team supervisor assignments
+        if (team.id === "leadership") {
+          if (roleSpec.role === "CEO") ceoId = id;
+          else if (roleSpec.role === "VP of Sales") vpSalesId = id;
+          else if (roleSpec.role === "CFO") cfoId = id;
+          else if (roleSpec.role === "Director of Sales") directorSalesId = id;
+          else if (roleSpec.role === "Director of HR") directorHRId = id;
+        }
+
+        // Track team lead
+        if (team.hasLead && teamPeople.length === team.leadIndex) {
+          teamLeadId = id;
+        }
+
+        teamPeople.push(person);
+        personIndex++;
+      }
+    });
+
+    // Store team lead for department
+    if (teamLeadId) {
+      teamLeads[team.id] = teamLeadId;
+    }
+
+    people.push(...teamPeople);
+  });
+
+  // Second pass: compute direct reports for each person
+  const directReportsMap = new Map<string, string[]>();
+  people.forEach(person => {
+    if (person.supervisorId) {
+      const reports = directReportsMap.get(person.supervisorId) || [];
+      reports.push(person.id);
+      directReportsMap.set(person.supervisorId, reports);
+    }
+  });
+
+  // Add directReportIds to people
+  people.forEach(person => {
+    person.directReportIds = directReportsMap.get(person.id) || [];
+  });
+
+  // Generate departments/teams with leadUserId
   const departments: OrgDepartment[] = SALES_TEAMS.map((team) => ({
     id: team.id,
     name: team.name,
@@ -205,52 +328,39 @@ export function generateSalesOrgData(seed: number = 42): OrgMapData {
     efficiency: Math.floor(rand() * 30 + 70), // 70-100
     flowHealth: pickFlowHealth(rand),
     activeLoad: Math.floor(rand() * 40 + 10), // 10-50
+    leadUserId: teamLeads[team.id],
   }));
 
-  // Generate people across teams
-  const people: OrgPerson[] = [];
-  let personIndex = 0;
+  // Generate flow edges (collaboration/reporting)
+  const edges: FlowEdge[] = [];
 
-  SALES_TEAMS.forEach((team) => {
-    for (let i = 0; i < team.peopleCount; i++) {
-      const firstName = FIRST_NAMES[personIndex % FIRST_NAMES.length];
-      const lastNameIdx = Math.floor(personIndex / FIRST_NAMES.length) % LAST_NAMES.length;
-      const lastName = LAST_NAMES[(lastNameIdx + hashString(team.id)) % LAST_NAMES.length];
-      const name = `${firstName} ${lastName}`;
-      const id = `person-${team.id}-${i}`;
-      const personRand = seededRandom(hashString(id));
-
-      people.push({
-        id,
-        name,
-        role: team.roles[i % team.roles.length],
-        departmentId: team.id,
-        presence: pickPresence(personRand),
-        leverageScore: Math.floor(personRand() * 100),
-        avatarInitials: getInitials(name),
+  // Add reports-to edges for all supervisor relationships
+  people.forEach(person => {
+    if (person.supervisorId) {
+      edges.push({
+        id: `edge-reports-${person.id}`,
+        fromId: person.id,
+        toId: person.supervisorId,
+        type: "reports-to",
+        weight: 0.8,
       });
-
-      personIndex++;
     }
   });
 
-  // Generate sparse flow edges (collaboration/reporting)
-  const edges: FlowEdge[] = [];
-  const edgeCount = Math.min(Math.floor(people.length * 0.25), 200);
-
-  for (let i = 0; i < edgeCount; i++) {
+  // Add some collaboration edges
+  const collabCount = Math.min(Math.floor(people.length * 0.15), 150);
+  for (let i = 0; i < collabCount; i++) {
     const edgeRand = seededRandom(seed + i * 1000);
     const fromIdx = Math.floor(edgeRand() * people.length);
     const toIdx = Math.floor(edgeRand() * people.length);
 
-    if (fromIdx !== toIdx) {
-      const types: FlowEdge["type"][] = ["reports-to", "collaborates", "delegates"];
+    if (fromIdx !== toIdx && people[fromIdx].departmentId !== people[toIdx].departmentId) {
       edges.push({
-        id: `edge-${i}`,
+        id: `edge-collab-${i}`,
         fromId: people[fromIdx].id,
         toId: people[toIdx].id,
-        type: types[Math.floor(edgeRand() * types.length)],
-        weight: edgeRand() * 0.7 + 0.3, // 0.3-1.0
+        type: "collaborates",
+        weight: edgeRand() * 0.5 + 0.2, // 0.2-0.7
       });
     }
   }
@@ -271,17 +381,32 @@ export function generateSalesOrgData(seed: number = 42): OrgMapData {
   return { core, departments, people, edges };
 }
 
+// Agent mapping: which agents can help with which task types
+const AGENT_SUPPORT_MAP: Record<CompanyTaskType, string[]> = {
+  Sales: ["agent-sales-ops", "agent-lead-routing", "agent-reporting"],
+  OrderWriting: ["agent-sales-ops", "agent-reporting"],
+  DisputeResolution: ["agent-ar-followup", "agent-reporting"],
+  Admin: ["agent-reporting", "agent-compliance"],
+  Other: ["agent-reporting"],
+};
+
 // Generate company tasks
 export function generateCompanyTasks(orgData: OrgMapData, seed: number = 42): CompanyTask[] {
   const tasks: CompanyTask[] = [];
   const rand = seededRandom(seed);
   const now = new Date();
 
+  // Create lookup maps for denormalization
+  const peopleMap = new Map(orgData.people.map(p => [p.id, p]));
+  const deptMap = new Map(orgData.departments.map(d => [d.id, d]));
+
   // Generate 3-7 tasks per person who is not offline
   orgData.people.forEach((person) => {
     if (person.presence === "offline") return;
 
     const taskCount = Math.floor(rand() * 5) + 3; // 3-7 tasks
+    const supervisor = person.supervisorId ? peopleMap.get(person.supervisorId) : undefined;
+    const team = deptMap.get(person.departmentId);
 
     for (let i = 0; i < taskCount; i++) {
       const taskRand = seededRandom(hashString(`${person.id}-task-${i}`));
@@ -362,11 +487,37 @@ export function generateCompanyTasks(orgData: OrgMapData, seed: number = 42): Co
         dueDate = dueDateObj.toISOString().split("T")[0];
       }
 
+      // Generate metrics for revenue tasks
+      let metrics = undefined;
+      if (revenueImpact === "Revenue") {
+        if (type === "Sales") {
+          metrics = {
+            callsMade: Math.floor(taskRand() * 5) + 1,
+            salesAmount: Math.floor(taskRand() * 50000) + 5000,
+            customerCount: Math.floor(taskRand() * 3) + 1,
+          };
+        } else if (type === "OrderWriting") {
+          metrics = {
+            ordersWritten: 1,
+            salesAmount: Math.floor(taskRand() * 20000) + 2000,
+          };
+        } else if (type === "DisputeResolution") {
+          metrics = {
+            disputeValue: Math.floor(taskRand() * 10000) + 1000,
+            customerCount: 1,
+          };
+        }
+      }
+
       tasks.push({
         id: `task-${person.id}-${i}`,
         title,
         ownerUserId: person.id,
+        ownerName: person.name,
         teamId: person.departmentId,
+        teamName: team?.name,
+        supervisorId: supervisor?.id,
+        supervisorName: supervisor?.name,
         type,
         revenueImpact,
         priority,
@@ -375,6 +526,8 @@ export function generateCompanyTasks(orgData: OrgMapData, seed: number = 42): Co
         createdAt: createdAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
         estimatedEffort: taskRand() < 0.3 ? Math.floor(taskRand() * 8) + 1 : undefined,
+        metrics,
+        agentSupportIds: AGENT_SUPPORT_MAP[type] || [],
       });
     }
   });

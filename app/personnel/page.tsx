@@ -8,8 +8,17 @@ import { SectionLayout } from "../../components/SectionLayout";
 import { RecentEntities } from "../../components/RecentEntities";
 import { Personnel, PersonnelStatus } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
+import { salesOrgData } from "../../lib/sales-mock-data";
+import { Circle, Users } from "lucide-react";
 
 const statusOptions: PersonnelStatus[] = ["Available", "On Call", "Offline"];
+
+// Status light colors
+const statusLightColors: Record<PersonnelStatus, string> = {
+  Available: "bg-green-500",
+  "On Call": "bg-blue-500",
+  Offline: "bg-gray-400",
+};
 
 function PersonnelContent() {
   const router = useRouter();
@@ -23,7 +32,27 @@ function PersonnelContent() {
   const [selectedId, setSelectedId] = useState<string | null>(personnel[0]?.id ?? null);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
+  // Create lookup for org hierarchy data
+  const orgPeopleMap = useMemo(() => {
+    const map = new Map(salesOrgData.people.map((p) => [p.id, p]));
+    return map;
+  }, []);
+
   const teams = useMemo(() => Array.from(new Set(personnel.map((person) => person.team))), [personnel]);
+
+  // Helper to get supervisor and direct report info for a person
+  const getHierarchyInfo = (personId: string) => {
+    const orgPerson = orgPeopleMap.get(personId);
+    if (!orgPerson) return { supervisor: null, directReportCount: 0 };
+
+    const supervisor = orgPerson.supervisorId ? orgPeopleMap.get(orgPerson.supervisorId) : null;
+    const directReportCount = orgPerson.directReportIds?.length || 0;
+
+    return {
+      supervisor: supervisor ? supervisor.name : null,
+      directReportCount,
+    };
+  };
 
   const filtered = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -202,6 +231,7 @@ function PersonnelContent() {
           <div className="divide-y divide-[color:var(--border)]">
             {filtered.map((person) => {
               const metrics = renderMetric(person);
+              const hierarchyInfo = getHierarchyInfo(person.id);
               return (
                 <button
                   key={person.id}
@@ -212,15 +242,44 @@ function PersonnelContent() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-semibold text-[color:var(--text)]">{person.name}</div>
-                      <div className="text-xs text-[color:var(--muted)]">{person.title}</div>
+                    <div className="flex items-center gap-3">
+                      {/* Status light indicator */}
+                      <div className="flex items-center justify-center">
+                        <div
+                          className={`w-3 h-3 rounded-full ${statusLightColors[person.status]} ${
+                            person.status === "Available" ? "animate-pulse shadow-lg shadow-green-500/50" : ""
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-[color:var(--text)]">{person.name}</div>
+                        <div className="text-xs text-[color:var(--muted)]">{person.title}</div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge label={person.team} />
                       <Badge label={person.status} />
                     </div>
                   </div>
+
+                  {/* Hierarchy info row */}
+                  <div className="mt-2 flex items-center gap-4 text-xs text-[color:var(--muted)]">
+                    {hierarchyInfo.supervisor && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[color:var(--muted)]">Reports to:</span>
+                        <span className="text-[color:var(--text)] font-medium">{hierarchyInfo.supervisor}</span>
+                      </div>
+                    )}
+                    {hierarchyInfo.directReportCount > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        <span className="text-[color:var(--text)] font-medium">
+                          {hierarchyInfo.directReportCount} {hierarchyInfo.directReportCount === 1 ? "report" : "reports"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[color:var(--muted)] md:grid-cols-4">
                     {metrics.map((item) => (
                       <div key={item.label}>
