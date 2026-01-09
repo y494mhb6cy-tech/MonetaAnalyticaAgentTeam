@@ -28,6 +28,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
+import { BuildVersion } from "@/components/BuildVersion";
 
 export default function AgentArchitecturePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -498,6 +499,9 @@ export default function AgentArchitecturePage() {
           </div>
         )}
       </div>
+
+      {/* Build version indicator */}
+      <BuildVersion />
     </div>
   );
 }
