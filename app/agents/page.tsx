@@ -1,16 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AgentDetailPanel } from "../../components/MaosDetailPanel";
 import { Badge, Button, Card, Input, PageHeader, Select } from "../../components/ui";
+import { SectionLayout } from "../../components/SectionLayout";
 import { Agent, AgentStatus } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
 
 const statusOptions: AgentStatus[] = ["Running", "Idle", "Paused"];
 
-export default function AgentsPage() {
+function AgentsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { agents, addAgent } = useMaosStore();
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
@@ -37,6 +39,19 @@ export default function AgentsPage() {
 
   const selected = selectedId ? agents.find((agent) => agent.id === selectedId) ?? null : null;
 
+  useEffect(() => {
+    const selectedParam = searchParams.get("select");
+    if (selectedParam) {
+      setSelectedId(selectedParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedId && !agents.find((agent) => agent.id === selectedId)) {
+      setSelectedId(agents[0]?.id ?? null);
+    }
+  }, [agents, selectedId]);
+
   const handleAdd = () => {
     const next = addAgent();
     setSelectedId(next.id);
@@ -47,17 +62,13 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Agents"
-        subtitle="Autonomous modules orchestrating Moneta Analytica OS."
-        actions={
-          <Button onClick={handleAdd}>Add new</Button>
-        }
-      />
-
-      <Card className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
+    <SectionLayout
+      sidebar={
+        <div className="space-y-6">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Agents</div>
+            <div className="mt-2 text-lg font-semibold text-[color:var(--text)]">Module filters</div>
+          </div>
           <Input label="Search" placeholder="Search by name or purpose" value={search} onChange={(event) => setSearch(event.target.value)} />
           <Select label="Module" value={moduleFilter} onChange={(event) => setModuleFilter(event.target.value)}>
             <option value="all">All modules</option>
@@ -75,68 +86,100 @@ export default function AgentsPage() {
               </option>
             ))}
           </Select>
-          <Input
-            label="Utilization min"
-            type="number"
-            min={0}
-            max={100}
-            value={utilMin}
-            onChange={(event) => setUtilMin(Number(event.target.value))}
-          />
-          <Input
-            label="Utilization max"
-            type="number"
-            min={0}
-            max={100}
-            value={utilMax}
-            onChange={(event) => setUtilMax(Number(event.target.value))}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Utilization min"
+              type="number"
+              min={0}
+              max={100}
+              value={utilMin}
+              onChange={(event) => setUtilMin(Number(event.target.value))}
+            />
+            <Input
+              label="Utilization max"
+              type="number"
+              min={0}
+              max={100}
+              value={utilMax}
+              onChange={(event) => setUtilMax(Number(event.target.value))}
+            />
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Modules</div>
+            <div className="mt-3 space-y-2 text-sm text-[color:var(--muted)]">
+              {modules.map((module) => (
+                <button
+                  key={module}
+                  type="button"
+                  className={moduleFilter === module ? "text-[color:var(--text)]" : "hover:text-[color:var(--text)]"}
+                  onClick={() => setModuleFilter(module)}
+                >
+                  {module}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </Card>
+      }
+      detail={
+        selected ? (
+          <AgentDetailPanel agent={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
+        ) : (
+          <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">
+            Select an agent to view details.
+          </Card>
+        )
+      }
+    >
+      <div className="space-y-6">
+        <PageHeader
+          title="Agents"
+          subtitle="Autonomous modules orchestrating Moneta Analytica OS."
+          actions={<Button onClick={handleAdd}>Add new</Button>}
+        />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card className="p-0">
-          <div className="border-b border-white/5 px-6 py-4">
+          <div className="border-b border-[color:var(--border)] px-5 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-400">Active Agents</div>
-                <div className="text-lg font-semibold text-white">{filtered.length} modules</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Active agents</div>
+                <div className="text-lg font-semibold text-[color:var(--text)]">{filtered.length} modules</div>
               </div>
               <Badge label="Automation directory" />
             </div>
           </div>
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-[color:var(--border)]">
             {filtered.map((agent) => (
               <button
                 key={agent.id}
                 type="button"
                 onClick={() => setSelectedId(agent.id)}
-                className={`w-full px-6 py-4 text-left transition hover:bg-white/5 ${
-                  selectedId === agent.id ? "bg-white/5" : ""
+                className={`w-full px-5 py-4 text-left transition hover:bg-[var(--hover)] ${
+                  selectedId === agent.id ? "bg-[var(--hover)]" : ""
                 }`}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-base font-semibold text-white">{agent.name}</div>
-                    <div className="text-sm text-slate-300">{agent.purpose}</div>
+                    <div className="text-sm font-semibold text-[color:var(--text)]">{agent.name}</div>
+                    <div className="text-xs text-[color:var(--muted)]">{agent.purpose}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge label={agent.module} />
                     <Badge label={agent.status} />
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-4 text-xs text-slate-400 md:grid-cols-4">
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[color:var(--muted)] md:grid-cols-4">
                   <div>
-                    <div className="text-slate-500">Runs (today)</div>
-                    <div className="text-sm text-white">{agent.metrics.runsToday}</div>
+                    <div className="text-[color:var(--muted)]">Runs (today)</div>
+                    <div className="text-sm text-[color:var(--text)]">{agent.metrics.runsToday}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Runs (week)</div>
-                    <div className="text-sm text-white">{agent.metrics.runsWeek}</div>
+                    <div className="text-[color:var(--muted)]">Runs (week)</div>
+                    <div className="text-sm text-[color:var(--text)]">{agent.metrics.runsWeek}</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Success rate</div>
-                    <div className="text-sm text-white">{agent.metrics.successRate}%</div>
+                    <div className="text-[color:var(--muted)]">Success rate</div>
+                    <div className="text-sm text-[color:var(--text)]">{agent.metrics.successRate}%</div>
                   </div>
                   <div className="flex items-center justify-end md:justify-start">
                     <Button
@@ -154,17 +197,15 @@ export default function AgentsPage() {
             ))}
           </div>
         </Card>
-
-        {selected ? (
-          <div className="lg:sticky lg:top-24">
-            <AgentDetailPanel agent={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
-          </div>
-        ) : (
-          <Card className="flex items-center justify-center text-sm text-slate-400">
-            Select an agent to view details.
-          </Card>
-        )}
       </div>
-    </div>
+    </SectionLayout>
+  );
+}
+
+export default function AgentsPage() {
+  return (
+    <Suspense fallback={<div className="text-[color:var(--muted)]">Loading agents…</div>}>
+      <AgentsContent />
+    </Suspense>
   );
 }

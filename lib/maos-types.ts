@@ -2,7 +2,7 @@ export type PersonnelStatus = "Available" | "On Call" | "Offline";
 
 export type AgentStatus = "Running" | "Idle" | "Paused";
 
-export type PersonnelMetrics = {
+export type SalesMetrics = {
   callsToday: number;
   callsWeek: number;
   salesToday: number;
@@ -10,11 +10,33 @@ export type PersonnelMetrics = {
   revenueWeek: number;
 };
 
+export type OpsMetrics = {
+  jobsScheduledToday: number;
+  jobsCompletedToday: number;
+  backlog: number;
+  overtimeHoursWeek: number;
+};
+
+export type FinanceMetrics = {
+  invoicesProcessedToday: number;
+  ARCallsWeek: number;
+  closeTasksOpen: number;
+  daysToCloseEstimate: number;
+};
+
+export type PersonnelMetrics = {
+  sales?: SalesMetrics;
+  ops?: OpsMetrics;
+  finance?: FinanceMetrics;
+};
+
 export type AgentMetrics = {
   runsToday: number;
   runsWeek: number;
   avgLatencyMs: number;
   successRate: number;
+  errorRate: number;
+  lastRunAt: string;
 };
 
 export type Personnel = {
@@ -22,7 +44,7 @@ export type Personnel = {
   name: string;
   title: string;
   positionLevel: "IC" | "Lead" | "Manager" | "Director";
-  team: "Sales" | "Finance" | "Ops" | "HR";
+  team: "Sales" | "Finance" | "Ops" | "HR" | "Exec";
   primaryResponsibilities: string[];
   primaryTasks: string[];
   status: PersonnelStatus;
@@ -33,9 +55,17 @@ export type Personnel = {
 export type Agent = {
   id: string;
   name: string;
-  module: "Finance" | "Ops" | "HR" | "Sales" | "Enablement" | "QA";
+  module:
+    | "Sales Ops"
+    | "Lead Routing"
+    | "Ledger Close"
+    | "AR Follow-up"
+    | "Scheduling"
+    | "QA"
+    | "Compliance"
+    | "Reporting";
   purpose: string;
-  ownerTeam: "Sales" | "Finance" | "Ops" | "HR";
+  ownerTeam: "Sales" | "Finance" | "Ops" | "HR" | "Exec";
   inputs: string[];
   outputs: string[];
   status: AgentStatus;

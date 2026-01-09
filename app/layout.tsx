@@ -2,6 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Sidebar } from "../components/Sidebar";
 import { MaosProvider } from "../lib/maos-store";
+import { CommandPalette } from "../components/CommandPalette";
+import { ThemeProvider } from "../components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Moneta Analytica OS — Agents",
@@ -12,14 +14,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen flex">
-          <Sidebar />
-          <main className="flex-1 bg-ink-900">
-            <div className="px-10 py-8">
-              <MaosProvider>{children}</MaosProvider>
+        <ThemeProvider>
+          <MaosProvider>
+            <div className="min-h-screen flex bg-[var(--bg)] text-[color:var(--text)]">
+              <Sidebar />
+              <div className="flex-1 min-w-0">
+                {children}
+              </div>
+              <CommandPalette />
             </div>
-          </main>
-        </div>
+          </MaosProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

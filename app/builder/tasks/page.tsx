@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import { Card, PageHeader, Input, TextArea, Select, Button } from "../../../components/ui";
+import { SectionLayout } from "../../../components/SectionLayout";
 import { TaskRabbit, Contract, Mode } from "../../../lib/types";
 
 const emptyContract: Contract = { profit: [], process: [], objectivity: [] };
@@ -65,29 +66,37 @@ export default function TaskBuilderPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Agents Builder"
-        subtitle="Create and refine single-task Agents for Moneta Analytica OS output runs."
-        actions={<Button onClick={onCreate}>New Agent</Button>}
-      />
-
-      <div className="grid lg:grid-cols-[1fr,2fr] gap-6">
-        <Card className="space-y-4">
-          <div className="text-sm text-slate-400">Agents</div>
-          <div className="space-y-2">
-            {tasks.map((task) => (
-              <button
-                key={task.id}
-                onClick={() => setSelectedId(task.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg ${selectedId === task.id ? "bg-white/10" : "hover:bg-white/5"}`}
-              >
-                <div className="text-sm font-medium">{task.name}</div>
-                <div className="text-xs text-slate-500">{task.domain}</div>
-              </button>
-            ))}
+    <SectionLayout
+      sidebar={
+        <div className="space-y-6">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Builder</div>
+            <div className="mt-2 text-lg font-semibold text-[color:var(--text)]">Agent templates</div>
           </div>
-        </Card>
+          <Card className="space-y-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Agents</div>
+            <div className="space-y-2">
+              {tasks.map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => setSelectedId(task.id)}
+                  className={`w-full text-left px-3 py-2 rounded-lg ${selectedId === task.id ? "bg-[var(--hover)]" : "hover:bg-[var(--hover)]"}`}
+                >
+                  <div className="text-sm font-medium text-[color:var(--text)]">{task.name}</div>
+                  <div className="text-xs text-[color:var(--muted)]">{task.domain}</div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      }
+    >
+      <div className="space-y-8">
+        <PageHeader
+          title="Agents Builder"
+          subtitle="Create and refine single-task Agents for Moneta Analytica OS output runs."
+          actions={<Button onClick={onCreate}>New Agent</Button>}
+        />
 
         {draft ? (
           <Card className="space-y-4">
@@ -109,7 +118,7 @@ export default function TaskBuilderPage() {
               <Input label="Output Formats" value={draft.outputFormat.join(", ")} readOnly />
               <Input label="Contract (uses defaults)" value="Profit · Process · Objectivity" readOnly />
             </div>
-            <button className="text-xs text-slate-400 underline" onClick={() => setShowAdvanced((prev) => !prev)}>
+            <button className="text-xs text-[color:var(--muted)] underline" onClick={() => setShowAdvanced((prev) => !prev)}>
               {showAdvanced ? "Hide" : "Show"} advanced prompt template
             </button>
             {showAdvanced ? (
@@ -125,6 +134,6 @@ export default function TaskBuilderPage() {
           </Card>
         ) : null}
       </div>
-    </div>
+    </SectionLayout>
   );
 }

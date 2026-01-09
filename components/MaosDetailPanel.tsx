@@ -4,10 +4,10 @@ import { Agent, Personnel } from "../lib/maos-types";
 import { Badge, Button, Card } from "./ui";
 
 const ActivityList = ({ items }: { items: string[] }) => (
-  <ul className="space-y-2 text-xs text-slate-300">
+  <ul className="space-y-2 text-xs text-[color:var(--muted)]">
     {items.map((item) => (
       <li key={item} className="flex items-start gap-2">
-        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-500/80" />
+        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[color:var(--accent)]/80" />
         <span>{item}</span>
       </li>
     ))}
@@ -26,18 +26,62 @@ export function PersonnelDetailPanel({
   showViewOnMap?: boolean;
 }) {
   const activity = [
-    `Reviewed ${person.metrics.callsWeek} weekly calls for ${person.team}.`,
-    `Logged ${person.metrics.salesWeek} weekly sales motions.`,
+    person.metrics.sales
+      ? `Reviewed ${person.metrics.sales.callsWeek} weekly sales calls.`
+      : person.metrics.ops
+        ? `Completed ${person.metrics.ops.jobsCompletedToday} jobs today.`
+        : person.metrics.finance
+          ? `Processed ${person.metrics.finance.invoicesProcessedToday} invoices today.`
+          : "Aligned executive operating priorities.",
+    person.metrics.sales
+      ? `Closed ${person.metrics.sales.salesWeek} weekly sales motions.`
+      : person.metrics.ops
+        ? `Backlog at ${person.metrics.ops.backlog} items.`
+        : person.metrics.finance
+          ? `${person.metrics.finance.closeTasksOpen} close tasks remain open.`
+          : "Reviewed strategic initiatives for next sprint.",
     "Updated operating priorities for next sprint."
   ];
+
+  const metricsBlock = person.metrics.sales
+    ? {
+        title: "Sales performance",
+        items: [
+          { label: "Calls (today)", value: person.metrics.sales.callsToday },
+          { label: "Calls (week)", value: person.metrics.sales.callsWeek },
+          { label: "Sales (week)", value: person.metrics.sales.salesWeek },
+          { label: "Revenue (week)", value: `$${person.metrics.sales.revenueWeek.toLocaleString()}` }
+        ]
+      }
+    : person.metrics.ops
+      ? {
+          title: "Operations throughput",
+          items: [
+            { label: "Jobs scheduled", value: person.metrics.ops.jobsScheduledToday },
+            { label: "Jobs completed", value: person.metrics.ops.jobsCompletedToday },
+            { label: "Backlog", value: person.metrics.ops.backlog },
+            { label: "Overtime hours", value: person.metrics.ops.overtimeHoursWeek }
+          ]
+        }
+      : person.metrics.finance
+        ? {
+            title: "Finance controls",
+            items: [
+              { label: "Invoices processed", value: person.metrics.finance.invoicesProcessedToday },
+              { label: "A/R calls (week)", value: person.metrics.finance.ARCallsWeek },
+              { label: "Close tasks open", value: person.metrics.finance.closeTasksOpen },
+              { label: "Days to close", value: person.metrics.finance.daysToCloseEstimate }
+            ]
+          }
+        : null;
 
   return (
     <Card className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400">Personnel</div>
-          <div className="text-xl font-semibold text-white">{person.name}</div>
-          <div className="text-sm text-slate-300">{person.title}</div>
+          <div className="text-xs uppercase tracking-wide text-[color:var(--muted)]">Personnel</div>
+          <div className="text-xl font-semibold text-[color:var(--text)]">{person.name}</div>
+          <div className="text-sm text-[color:var(--muted)]">{person.title}</div>
         </div>
         {onClose ? (
           <Button variant="ghost" onClick={onClose} className="px-2 py-1">
@@ -49,42 +93,34 @@ export function PersonnelDetailPanel({
         <Badge label={person.team} />
         <Badge label={person.positionLevel} />
         <Badge label={person.status} />
-        <span className="text-xs text-slate-400">Capacity</span>
-        <span className="text-sm text-white">{person.capacity}%</span>
+        <span className="text-xs text-[color:var(--muted)]">Capacity</span>
+        <span className="text-sm text-[color:var(--text)]">{person.capacity}%</span>
       </div>
-      <div className="grid gap-3 text-sm text-slate-300">
+      <div className="grid gap-3 text-sm text-[color:var(--muted)]">
         <div>
-          <div className="text-xs uppercase text-slate-500">Primary responsibilities</div>
-          <div className="mt-1 text-sm text-slate-200">{person.primaryResponsibilities.join(" · ")}</div>
+          <div className="text-xs uppercase text-[color:var(--muted)]">Primary responsibilities</div>
+          <div className="mt-1 text-sm text-[color:var(--text)]">{person.primaryResponsibilities.join(" · ")}</div>
         </div>
         <div>
-          <div className="text-xs uppercase text-slate-500">Primary tasks</div>
-          <div className="mt-1 text-sm text-slate-200">{person.primaryTasks.join(" · ")}</div>
+          <div className="text-xs uppercase text-[color:var(--muted)]">Primary tasks</div>
+          <div className="mt-1 text-sm text-[color:var(--text)]">{person.primaryTasks.join(" · ")}</div>
         </div>
       </div>
-      <div className="grid gap-4 rounded-xl border border-white/5 bg-ink-900/60 p-4 text-sm">
-        <div className="text-xs uppercase text-slate-500">Weekly metrics</div>
-        <div className="grid grid-cols-2 gap-3 text-slate-200">
-          <div>
-            <div className="text-xs text-slate-400">Calls (week)</div>
-            <div className="text-lg font-semibold">{person.metrics.callsWeek}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400">Sales (week)</div>
-            <div className="text-lg font-semibold">{person.metrics.salesWeek}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400">Revenue (week)</div>
-            <div className="text-lg font-semibold">${person.metrics.revenueWeek.toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400">Calls (today)</div>
-            <div className="text-lg font-semibold">{person.metrics.callsToday}</div>
+      {metricsBlock ? (
+        <div className="grid gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--panel2)] p-4 text-sm">
+          <div className="text-xs uppercase text-[color:var(--muted)]">{metricsBlock.title}</div>
+          <div className="grid grid-cols-2 gap-3 text-[color:var(--text)]">
+            {metricsBlock.items.map((item) => (
+              <div key={item.label}>
+                <div className="text-xs text-[color:var(--muted)]">{item.label}</div>
+                <div className="text-lg font-semibold">{item.value}</div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      ) : null}
       <div className="space-y-2">
-        <div className="text-xs uppercase text-slate-500">Recent activity</div>
+        <div className="text-xs uppercase text-[color:var(--muted)]">Recent activity</div>
         <ActivityList items={activity} />
       </div>
       {showViewOnMap && onViewMap ? (
@@ -117,9 +153,9 @@ export function AgentDetailPanel({
     <Card className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400">Agent</div>
-          <div className="text-xl font-semibold text-white">{agent.name}</div>
-          <div className="text-sm text-slate-300">{agent.purpose}</div>
+          <div className="text-xs uppercase tracking-wide text-[color:var(--muted)]">Agent</div>
+          <div className="text-xl font-semibold text-[color:var(--text)]">{agent.name}</div>
+          <div className="text-sm text-[color:var(--muted)]">{agent.purpose}</div>
         </div>
         {onClose ? (
           <Button variant="ghost" onClick={onClose} className="px-2 py-1">
@@ -131,42 +167,50 @@ export function AgentDetailPanel({
         <Badge label={agent.module} />
         <Badge label={agent.ownerTeam} />
         <Badge label={agent.status} />
-        <span className="text-xs text-slate-400">Utilization</span>
-        <span className="text-sm text-white">{agent.utilization}%</span>
+        <span className="text-xs text-[color:var(--muted)]">Utilization</span>
+        <span className="text-sm text-[color:var(--text)]">{agent.utilization}%</span>
       </div>
-      <div className="grid gap-3 text-sm text-slate-300">
+      <div className="grid gap-3 text-sm text-[color:var(--muted)]">
         <div>
-          <div className="text-xs uppercase text-slate-500">Inputs</div>
-          <div className="mt-1 text-sm text-slate-200">{agent.inputs.join(" · ")}</div>
+          <div className="text-xs uppercase text-[color:var(--muted)]">Inputs</div>
+          <div className="mt-1 text-sm text-[color:var(--text)]">{agent.inputs.join(" · ")}</div>
         </div>
         <div>
-          <div className="text-xs uppercase text-slate-500">Outputs</div>
-          <div className="mt-1 text-sm text-slate-200">{agent.outputs.join(" · ")}</div>
+          <div className="text-xs uppercase text-[color:var(--muted)]">Outputs</div>
+          <div className="mt-1 text-sm text-[color:var(--text)]">{agent.outputs.join(" · ")}</div>
         </div>
       </div>
-      <div className="grid gap-4 rounded-xl border border-white/5 bg-ink-900/60 p-4 text-sm">
-        <div className="text-xs uppercase text-slate-500">Weekly metrics</div>
-        <div className="grid grid-cols-2 gap-3 text-slate-200">
+      <div className="grid gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--panel2)] p-4 text-sm">
+        <div className="text-xs uppercase text-[color:var(--muted)]">Performance metrics</div>
+        <div className="grid grid-cols-2 gap-3 text-[color:var(--text)]">
           <div>
-            <div className="text-xs text-slate-400">Runs (week)</div>
+            <div className="text-xs text-[color:var(--muted)]">Runs (week)</div>
             <div className="text-lg font-semibold">{agent.metrics.runsWeek}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Success rate</div>
+            <div className="text-xs text-[color:var(--muted)]">Success rate</div>
             <div className="text-lg font-semibold">{agent.metrics.successRate}%</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Runs (today)</div>
+            <div className="text-xs text-[color:var(--muted)]">Runs (today)</div>
             <div className="text-lg font-semibold">{agent.metrics.runsToday}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Avg latency</div>
+            <div className="text-xs text-[color:var(--muted)]">Error rate</div>
+            <div className="text-lg font-semibold">{agent.metrics.errorRate}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-[color:var(--muted)]">Avg latency</div>
             <div className="text-lg font-semibold">{agent.metrics.avgLatencyMs}ms</div>
+          </div>
+          <div>
+            <div className="text-xs text-[color:var(--muted)]">Last run</div>
+            <div className="text-lg font-semibold">{new Date(agent.metrics.lastRunAt).toLocaleString()}</div>
           </div>
         </div>
       </div>
       <div className="space-y-2">
-        <div className="text-xs uppercase text-slate-500">Recent activity</div>
+        <div className="text-xs uppercase text-[color:var(--muted)]">Recent activity</div>
         <ActivityList items={activity} />
       </div>
       {showViewOnMap && onViewMap ? (
