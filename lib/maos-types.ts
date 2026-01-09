@@ -112,3 +112,49 @@ export type Task = {
   dueDate?: string;
   tags?: string[];
 };
+
+// Radial Org Map Types
+
+export type FlowHealth = "green" | "amber" | "red";
+
+export type PersonnelPresence = "offline" | "online" | "active" | "blocked";
+
+export type OrgDepartment = {
+  id: string;
+  name: string;
+  color: string;
+  efficiency: number; // 0-100
+  flowHealth: FlowHealth;
+  activeLoad: number; // tasks in motion
+};
+
+export type OrgPerson = {
+  id: string;
+  name: string;
+  role: string;
+  departmentId: string;
+  presence: PersonnelPresence;
+  leverageScore: number; // 0-100, high = gold edge
+  avatarInitials: string;
+};
+
+export type FlowEdge = {
+  id: string;
+  fromId: string;
+  toId: string;
+  type: "reports-to" | "collaborates" | "delegates";
+  weight: number; // 0-1 for line thickness
+};
+
+export type OrgCore = {
+  efficiencyScore: number; // 0-100
+  activeLoad: number; // tasks in motion
+  flowHealth: FlowHealth;
+};
+
+export type OrgMapData = {
+  core: OrgCore;
+  departments: OrgDepartment[];
+  people: OrgPerson[];
+  edges: FlowEdge[];
+};
