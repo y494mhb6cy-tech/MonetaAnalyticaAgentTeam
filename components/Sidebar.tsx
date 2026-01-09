@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { Map, Users, Cpu, ListTodo, Blocks, Settings } from "lucide-react";
 
 const items = [
-  { href: "/map", label: "Map", icon: "🗺️" },
-  { href: "/personnel", label: "Personnel", icon: "👥" },
-  { href: "/agents", label: "Agents", icon: "🤖" },
-  { href: "/tasks", label: "Tasks", icon: "🧭" },
-  { href: "/builder/tasks", label: "Builder", icon: "🧩" },
-  { href: "/settings", label: "Settings", icon: "⚙️" }
+  { href: "/map", label: "Map", Icon: Map },
+  { href: "/personnel", label: "Personnel", Icon: Users },
+  { href: "/agents", label: "Agents", Icon: Cpu },
+  { href: "/tasks", label: "Tasks", Icon: ListTodo },
+  { href: "/builder/tasks", label: "Builder", Icon: Blocks },
+  { href: "/settings", label: "Settings", Icon: Settings }
 ];
 
 export function Sidebar() {
@@ -25,6 +26,7 @@ export function Sidebar() {
           const active = item.href === "/builder/tasks"
             ? pathname.startsWith("/builder")
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const IconComponent = item.Icon;
           return (
             <Link
               key={item.href}
@@ -37,7 +39,7 @@ export function Sidebar() {
                   : "text-[color:var(--muted)] hover:bg-[var(--hover)] hover:text-[color:var(--text)]"
               )}
             >
-              <span aria-hidden>{item.icon}</span>
+              <IconComponent className="w-5 h-5" strokeWidth={1.5} />
             </Link>
           );
         })}
