@@ -1,6 +1,8 @@
 "use client";
 
-import { Agent, Personnel } from "../lib/maos-types";
+import { useMemo, useState } from "react";
+import { Agent, Personnel, TaskStatus } from "../lib/maos-types";
+import { useMaosStore } from "../lib/maos-store";
 import { Badge, Button, Card } from "./ui";
 
 const ActivityList = ({ items }: { items: string[] }) => (
@@ -14,6 +16,40 @@ const ActivityList = ({ items }: { items: string[] }) => (
   </ul>
 );
 
+const statusOptions: TaskStatus[] = ["Backlog", "In Progress", "Blocked", "Done"];
+
+const TaskRow = ({
+  id,
+  title,
+  status,
+  priority,
+  onStatusChange
+}: {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: string;
+  onStatusChange: (id: string, status: TaskStatus) => void;
+}) => (
+  <div className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] px-3 py-2 text-sm">
+    <div>
+      <div className="text-sm text-[color:var(--text)]">{title}</div>
+      <div className="text-[11px] uppercase text-[color:var(--muted)]">{priority}</div>
+    </div>
+    <select
+      className="rounded-md border border-[color:var(--border)] bg-[var(--panel)] px-2 py-1 text-xs text-[color:var(--text)]"
+      value={status}
+      onChange={(event) => onStatusChange(id, event.target.value as TaskStatus)}
+    >
+      {statusOptions.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
 export function PersonnelDetailPanel({
   person,
   onClose,
@@ -25,6 +61,14 @@ export function PersonnelDetailPanel({
   onViewMap?: () => void;
   showViewOnMap?: boolean;
 }) {
+  const { tasks, addTask, updateTask } = useMaosStore();
+  const [showTaskComposer, setShowTaskComposer] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+
+  const personTasks = useMemo(() => tasks.filter((task) => task.ownerType === "personnel" && task.ownerId === person.id), [person.id, tasks]);
+  const openTasks = personTasks.filter((task) => task.status !== "Done");
+  const doneTasks = personTasks.filter((task) => task.status === "Done");
   const activity = [
     person.metrics.sales
       ? `Reviewed ${person.metrics.sales.callsWeek} weekly sales calls.`
@@ -119,6 +163,93 @@ export function PersonnelDetailPanel({
           </div>
         </div>
       ) : null}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase text-[color:var(--muted)]">Tasks</div>
+          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setShowTaskComposer((prev) => !prev)}>
+            + New Task
+          </Button>
+        </div>
+        {showTaskComposer ? (
+          <div className="space-y-2 rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] p-3">
+            <input
+              className="w-full rounded-md border border-[color:var(--border)] bg-[var(--panel)] px-2 py-1 text-sm text-[color:var(--text)]"
+              placeholder="Task title"
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+            />
+            <textarea
+              className="min-h-[70px] w-full rounded-md border border-[color:var(--border)] bg-[var(--panel)] px-2 py-1 text-sm text-[color:var(--text)]"
+              placeholder="Description (optional)"
+              value={draftDescription}
+              onChange={(event) => setDraftDescription(event.target.value)}
+            />
+            <div className="flex justify-end">
+              <Button
+                className="px-3 py-1 text-xs"
+                disabled={!draftTitle.trim()}
+                onClick={() => {
+                  addTask({
+                    title: draftTitle.trim(),
+                    description: draftDescription.trim() || undefined,
+                    ownerType: "personnel",
+                    ownerId: person.id,
+                    priority: "Med",
+                    status: "Backlog",
+                    tags: ["manual"]
+                  });
+                  setDraftTitle("");
+                  setDraftDescription("");
+                  setShowTaskComposer(false);
+                }}
+              >
+                Add task
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        <div className="space-y-2">
+          {openTasks.length === 0 ? <div className="text-xs text-[color:var(--muted)]">No open tasks.</div> : null}
+          {openTasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              id={task.id}
+              title={task.title}
+              status={task.status}
+              priority={task.priority}
+              onStatusChange={(id, status) => {
+                const next = personTasks.find((item) => item.id === id);
+                if (!next) {
+                  return;
+                }
+                updateTask({ ...next, status, updatedAt: new Date().toISOString() });
+              }}
+            />
+          ))}
+        </div>
+        <details className="rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] px-3 py-2 text-xs text-[color:var(--muted)]">
+          <summary className="cursor-pointer text-xs text-[color:var(--muted)]">Done ({doneTasks.length})</summary>
+          <div className="mt-2 space-y-2">
+            {doneTasks.length === 0 ? <div>No completed tasks.</div> : null}
+            {doneTasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                id={task.id}
+                title={task.title}
+                status={task.status}
+                priority={task.priority}
+                onStatusChange={(id, status) => {
+                  const next = personTasks.find((item) => item.id === id);
+                  if (!next) {
+                    return;
+                  }
+                  updateTask({ ...next, status, updatedAt: new Date().toISOString() });
+                }}
+              />
+            ))}
+          </div>
+        </details>
+      </div>
       <div className="space-y-2">
         <div className="text-xs uppercase text-[color:var(--muted)]">Recent activity</div>
         <ActivityList items={activity} />
@@ -143,6 +274,14 @@ export function AgentDetailPanel({
   onViewMap?: () => void;
   showViewOnMap?: boolean;
 }) {
+  const { tasks, addTask, updateTask } = useMaosStore();
+  const [showTaskComposer, setShowTaskComposer] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+
+  const agentTasks = useMemo(() => tasks.filter((task) => task.ownerType === "agent" && task.ownerId === agent.id), [agent.id, tasks]);
+  const openTasks = agentTasks.filter((task) => task.status !== "Done");
+  const doneTasks = agentTasks.filter((task) => task.status === "Done");
   const activity = [
     `Processed ${agent.metrics.runsWeek} runs this week for ${agent.ownerTeam}.`,
     `Maintained ${agent.metrics.successRate}% success rate.`,
@@ -208,6 +347,93 @@ export function AgentDetailPanel({
             <div className="text-lg font-semibold">{new Date(agent.metrics.lastRunAt).toLocaleString()}</div>
           </div>
         </div>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase text-[color:var(--muted)]">Tasks</div>
+          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setShowTaskComposer((prev) => !prev)}>
+            + New Task
+          </Button>
+        </div>
+        {showTaskComposer ? (
+          <div className="space-y-2 rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] p-3">
+            <input
+              className="w-full rounded-md border border-[color:var(--border)] bg-[var(--panel)] px-2 py-1 text-sm text-[color:var(--text)]"
+              placeholder="Task title"
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+            />
+            <textarea
+              className="min-h-[70px] w-full rounded-md border border-[color:var(--border)] bg-[var(--panel)] px-2 py-1 text-sm text-[color:var(--text)]"
+              placeholder="Description (optional)"
+              value={draftDescription}
+              onChange={(event) => setDraftDescription(event.target.value)}
+            />
+            <div className="flex justify-end">
+              <Button
+                className="px-3 py-1 text-xs"
+                disabled={!draftTitle.trim()}
+                onClick={() => {
+                  addTask({
+                    title: draftTitle.trim(),
+                    description: draftDescription.trim() || undefined,
+                    ownerType: "agent",
+                    ownerId: agent.id,
+                    priority: "Med",
+                    status: "Backlog",
+                    tags: ["manual"]
+                  });
+                  setDraftTitle("");
+                  setDraftDescription("");
+                  setShowTaskComposer(false);
+                }}
+              >
+                Add task
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        <div className="space-y-2">
+          {openTasks.length === 0 ? <div className="text-xs text-[color:var(--muted)]">No open tasks.</div> : null}
+          {openTasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              id={task.id}
+              title={task.title}
+              status={task.status}
+              priority={task.priority}
+              onStatusChange={(id, status) => {
+                const next = agentTasks.find((item) => item.id === id);
+                if (!next) {
+                  return;
+                }
+                updateTask({ ...next, status, updatedAt: new Date().toISOString() });
+              }}
+            />
+          ))}
+        </div>
+        <details className="rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] px-3 py-2 text-xs text-[color:var(--muted)]">
+          <summary className="cursor-pointer text-xs text-[color:var(--muted)]">Done ({doneTasks.length})</summary>
+          <div className="mt-2 space-y-2">
+            {doneTasks.length === 0 ? <div>No completed tasks.</div> : null}
+            {doneTasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                id={task.id}
+                title={task.title}
+                status={task.status}
+                priority={task.priority}
+                onStatusChange={(id, status) => {
+                  const next = agentTasks.find((item) => item.id === id);
+                  if (!next) {
+                    return;
+                  }
+                  updateTask({ ...next, status, updatedAt: new Date().toISOString() });
+                }}
+              />
+            ))}
+          </div>
+        </details>
       </div>
       <div className="space-y-2">
         <div className="text-xs uppercase text-[color:var(--muted)]">Recent activity</div>

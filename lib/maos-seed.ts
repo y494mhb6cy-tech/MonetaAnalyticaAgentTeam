@@ -1,4 +1,4 @@
-import { Agent, MapState, NodeKind, Personnel } from "./maos-types";
+import { Agent, MapState, NodeKind, Personnel, Task, TaskOwnerType, TaskStatus } from "./maos-types";
 
 const createId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -39,7 +39,7 @@ const personnelBase: Array<Omit<Personnel, "status" | "capacity" | "metrics"> & 
     id: "personnel-1",
     name: "Camille Laurent",
     title: "Chief Executive Officer",
-    positionLevel: "Director",
+    positionLevel: "Executive",
     team: "Exec",
     primaryResponsibilities: ["Vision & capital strategy", "Executive cadence", "Investor alignment"],
     primaryTasks: ["Board update", "Weekly exec 1:1s", "Strategic hiring approvals"],
@@ -49,7 +49,7 @@ const personnelBase: Array<Omit<Personnel, "status" | "capacity" | "metrics"> & 
     id: "personnel-2",
     name: "Marcus Jansen",
     title: "Chief Financial Officer",
-    positionLevel: "Director",
+    positionLevel: "Executive",
     team: "Exec",
     primaryResponsibilities: ["Capital allocation", "Risk oversight", "Financial narrative"],
     primaryTasks: ["Review cash runway", "Update investor deck", "Approve close scope"],
@@ -559,3 +559,49 @@ export const seedMaosData = () => {
 };
 
 export const createMaosId = () => createId();
+
+const taskStatusDistribution: TaskStatus[] = ["Backlog", "Backlog", "In Progress", "Blocked", "Done"];
+const taskPriorities: Task["priority"][] = ["Low", "Med", "High", "Critical"];
+const taskTitles = [
+  "Review escalation notes",
+  "Prepare weekly cadence brief",
+  "Audit workflow handoffs",
+  "Update stakeholder dashboard",
+  "Triage open queue",
+  "Draft status summary",
+  "Validate output quality",
+  "Resolve blocker dependencies",
+  "Optimize routing rules",
+  "Finalize close checklist"
+];
+
+const createTask = (ownerType: TaskOwnerType, ownerId: string, index: number, seedOffset: number): Task => {
+  const createdAt = new Date(Date.now() - (seedOffset + index) * 3600 * 1000).toISOString();
+  const status = taskStatusDistribution[(seedOffset + index) % taskStatusDistribution.length];
+  return {
+    id: createId(),
+    title: taskTitles[(seedOffset + index) % taskTitles.length],
+    description: "Mock queue task seeded for demo operations.",
+    ownerType,
+    ownerId,
+    priority: taskPriorities[(seedOffset + index) % taskPriorities.length],
+    status,
+    createdAt,
+    updatedAt: createdAt,
+    dueDate: new Date(Date.now() + (seedOffset + 2) * 24 * 3600 * 1000).toISOString(),
+    tags: status === "Blocked" ? ["dependency", "risk"] : ["queue"]
+  };
+};
+
+export const seedMaosTasks = (personnel: Personnel[], agents: Agent[]): Task[] => {
+  const tasks: Task[] = [];
+  personnel.forEach((person, index) => {
+    tasks.push(createTask("personnel", person.id, 0, index * 2));
+    tasks.push(createTask("personnel", person.id, 1, index * 2));
+  });
+  agents.forEach((agent, index) => {
+    tasks.push(createTask("agent", agent.id, 0, personnel.length * 2 + index * 2));
+    tasks.push(createTask("agent", agent.id, 1, personnel.length * 2 + index * 2));
+  });
+  return tasks;
+};

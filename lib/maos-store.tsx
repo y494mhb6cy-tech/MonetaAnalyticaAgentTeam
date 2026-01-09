@@ -6,14 +6,16 @@ import {
   AgentStatus,
   MapState,
   Personnel,
-  PersonnelStatus
+  PersonnelStatus,
+  Task
 } from "./maos-types";
-import { createMaosId, seedMaosData } from "./maos-seed";
+import { createMaosId, seedMaosData, seedMaosTasks } from "./maos-seed";
 
 const DEMO_VERSION = "v2";
 const PERSONNEL_KEY = `maos_personnel_${DEMO_VERSION}`;
 const AGENTS_KEY = `maos_agents_${DEMO_VERSION}`;
 const MAP_KEY = `maos_map_state_${DEMO_VERSION}`;
+const TASKS_KEY = "maos_tasks_v1";
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
@@ -41,10 +43,33 @@ const isMapState = (value: unknown): value is MapState => {
   return typeof value.overlaysEnabled === "boolean";
 };
 
+const isTask = (value: unknown): value is Task => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    (value.ownerType === "personnel" || value.ownerType === "agent") &&
+    typeof value.ownerId === "string" &&
+    typeof value.priority === "string" &&
+    typeof value.status === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
+};
+
 const statusCycle: PersonnelStatus[] = ["Available", "On Call", "Offline"];
 const agentStatusCycle: AgentStatus[] = ["Running", "Idle", "Paused"];
 
 const newPersonnelTemplates: Array<Pick<Personnel, "title" | "positionLevel" | "team" | "primaryResponsibilities" | "primaryTasks">> = [
+  {
+    title: "Chief of Staff",
+    positionLevel: "Executive",
+    team: "Exec",
+    primaryResponsibilities: ["Executive alignment", "Operating cadence", "Strategic follow-through"],
+    primaryTasks: ["Update exec brief", "Coordinate priorities", "Review leadership notes"]
+  },
   {
     title: "Revenue Analyst",
     positionLevel: "IC",
@@ -207,9 +232,12 @@ type MaosContextValue = {
   personnel: Personnel[];
   agents: Agent[];
   mapState: MapState;
+  tasks: Task[];
   setMapState: React.Dispatch<React.SetStateAction<MapState>>;
   addPersonnel: () => Personnel;
   addAgent: () => Agent;
+  addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => Task;
+  updateTask: (task: Task) => void;
   resetDemoData: () => void;
 };
 
@@ -217,9 +245,11 @@ const MaosContext = createContext<MaosContextValue | null>(null);
 
 export function MaosProvider({ children }: { children: React.ReactNode }) {
   const seed = useMemo(() => seedMaosData(), []);
+  const seedTasks = useMemo(() => seedMaosTasks(seed.personnel, seed.agents), [seed.agents, seed.personnel]);
   const [personnel, setPersonnel] = useState<Personnel[]>(seed.personnel);
   const [agents, setAgents] = useState<Agent[]>(seed.agents);
   const [mapState, setMapState] = useState<MapState>(seed.mapState);
+  const [tasks, setTasks] = useState<Task[]>(seedTasks);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -241,6 +271,7 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     const storedPersonnel = load<unknown>(PERSONNEL_KEY);
     const storedAgents = load<unknown>(AGENTS_KEY);
     const storedMap = load<unknown>(MAP_KEY);
+    const storedTasks = load<unknown>(TASKS_KEY);
 
     if (Array.isArray(storedPersonnel) && storedPersonnel.every(isPersonnel)) {
       setPersonnel(storedPersonnel);
@@ -257,9 +288,14 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     } else {
       setMapState(seed.mapState);
     }
+    if (Array.isArray(storedTasks) && storedTasks.every(isTask)) {
+      setTasks(storedTasks);
+    } else {
+      setTasks(seedTasks);
+    }
 
     setHasHydrated(true);
-  }, [seed]);
+  }, [seed, seedTasks]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -269,9 +305,10 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(PERSONNEL_KEY, JSON.stringify(personnel));
       window.localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
       window.localStorage.setItem(MAP_KEY, JSON.stringify(mapState));
+      window.localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
     }, 400);
     return () => window.clearTimeout(handle);
-  }, [agents, hasHydrated, mapState, personnel]);
+  }, [agents, hasHydrated, mapState, personnel, tasks]);
 
   const resetDemoData = useCallback(() => {
     if (typeof window === "undefined") {
@@ -281,9 +318,11 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.removeItem(PERSONNEL_KEY);
     window.localStorage.removeItem(AGENTS_KEY);
     window.localStorage.removeItem(MAP_KEY);
+    window.localStorage.removeItem(TASKS_KEY);
     setPersonnel(nextSeed.personnel);
     setAgents(nextSeed.agents);
     setMapState(nextSeed.mapState);
+    setTasks(seedMaosTasks(nextSeed.personnel, nextSeed.agents));
   }, []);
 
   const addPersonnel = useCallback(() => {
@@ -306,17 +345,36 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     return next;
   }, [agents.length]);
 
+  const addTask = useCallback((task: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
+    const now = new Date().toISOString();
+    const next: Task = {
+      ...task,
+      id: createMaosId(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setTasks((prev) => [next, ...prev]);
+    return next;
+  }, []);
+
+  const updateTask = useCallback((task: Task) => {
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? task : item)));
+  }, []);
+
   const value = useMemo(
     () => ({
       personnel,
       agents,
       mapState,
+      tasks,
       setMapState,
       addPersonnel,
       addAgent,
+      addTask,
+      updateTask,
       resetDemoData
     }),
-    [addAgent, addPersonnel, agents, mapState, personnel, resetDemoData]
+    [addAgent, addPersonnel, addTask, agents, mapState, personnel, resetDemoData, tasks, updateTask]
   );
 
   return <MaosContext.Provider value={value}>{children}</MaosContext.Provider>;
