@@ -10,6 +10,7 @@ import MapDetailsDrawer from "../../components/MapDetailsDrawer";
 import MapTooltip from "../../components/MapTooltip";
 import TaskFeed from "../../components/TaskFeed";
 import TaskDetailsDrawer from "../../components/TaskDetailsDrawer";
+import { BuildVersion } from "../../components/BuildVersion";
 import { Layers, Eye, Grid3x3 } from "lucide-react";
 
 // Dynamic import for canvas component to avoid SSR issues
@@ -433,6 +434,9 @@ export default function PersonnelMapPage() {
           onRunAgent={handleRunAgent}
         />
       )}
+
+      {/* Build version indicator */}
+      <BuildVersion />
     </div>
   );
 }
