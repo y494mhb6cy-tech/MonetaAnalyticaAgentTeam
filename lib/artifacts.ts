@@ -15,7 +15,7 @@ export async function buildDocx(output: StructuredOutput) {
         properties: {},
         children: [
           new Paragraph({
-            children: [new TextRun({ text: "Moneta Analytica", bold: true, size: 28 })]
+            children: [new TextRun({ text: "MAOS", bold: true, size: 28 })]
           }),
           new Paragraph({ text: output.title, spacing: { after: 200 } }),
           new Paragraph({ text: today, spacing: { after: 400 } }),
@@ -48,7 +48,7 @@ export async function buildPdf(output: StructuredOutput) {
   const { width, height } = page.getSize();
 
   let y = height - 60;
-  page.drawText("Moneta Analytica", {
+  page.drawText("MAOS", {
     x: 50,
     y,
     size: 18,

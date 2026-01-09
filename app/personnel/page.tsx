@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PersonnelDetailPanel } from "../../components/MaosDetailPanel";
 import { Badge, Button, Card, Input, PageHeader, Select } from "../../components/ui";
 import { SectionLayout } from "../../components/SectionLayout";
+import { RecentEntities } from "../../components/RecentEntities";
 import { Personnel, PersonnelStatus } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
 
@@ -13,13 +14,14 @@ const statusOptions: PersonnelStatus[] = ["Available", "On Call", "Offline"];
 function PersonnelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { personnel, addPersonnel } = useMaosStore();
+  const { personnel, addPersonnel, addRecentEntity } = useMaosStore();
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [capacityMin, setCapacityMin] = useState(0);
   const [capacityMax, setCapacityMax] = useState(100);
   const [selectedId, setSelectedId] = useState<string | null>(personnel[0]?.id ?? null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   const teams = useMemo(() => Array.from(new Set(personnel.map((person) => person.team))), [personnel]);
 
@@ -40,6 +42,10 @@ function PersonnelContent() {
   const selected = selectedId ? personnel.find((person) => person.id === selectedId) ?? null : null;
 
   useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const selectedParam = searchParams.get("select");
     if (selectedParam) {
       setSelectedId(selectedParam);
@@ -51,6 +57,17 @@ function PersonnelContent() {
       setSelectedId(personnel[0]?.id ?? null);
     }
   }, [personnel, selectedId]);
+
+  useEffect(() => {
+    if (selected) {
+      addRecentEntity({
+        id: selected.id,
+        kind: "personnel",
+        name: selected.name,
+        subtitle: selected.title
+      });
+    }
+  }, [addRecentEntity, selected]);
 
   const handleAdd = () => {
     const next = addPersonnel();
@@ -94,7 +111,13 @@ function PersonnelContent() {
             <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Personnel</div>
             <div className="mt-2 text-lg font-semibold text-[color:var(--text)]">Directory filters</div>
           </div>
-          <Input label="Search" placeholder="Search by name or title" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <Input
+            ref={searchRef}
+            label="Search"
+            placeholder="Search by name or title"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
           <Select label="Team" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
             <option value="all">All teams</option>
             {teams.map((team) => (
@@ -147,19 +170,22 @@ function PersonnelContent() {
         </div>
       }
       detail={
-        selected ? (
-          <PersonnelDetailPanel person={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
-        ) : (
-          <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">
-            Select a person to view details.
-          </Card>
-        )
+        <div className="space-y-4">
+          {selected ? (
+            <PersonnelDetailPanel person={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
+          ) : (
+            <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">
+              Select a person to view details.
+            </Card>
+          )}
+          <RecentEntities onSelect={(entity) => setSelectedId(entity.id)} />
+        </div>
       }
     >
       <div className="space-y-6">
         <PageHeader
           title="Personnel"
-          subtitle="Human operators running Moneta Analytica OS."
+          subtitle="Human operators running MAOS (Moneta Analytica Agent Team)."
           actions={<Button onClick={handleAdd}>Add new</Button>}
         />
 
@@ -205,6 +231,7 @@ function PersonnelContent() {
                     <div className="flex items-center justify-end md:justify-start">
                       <Button
                         variant="ghost"
+                        size="sm"
                         onClick={(event) => {
                           event.stopPropagation();
                           handleViewMap(person);

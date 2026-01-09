@@ -2,9 +2,11 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import clsx from "clsx";
 import { AgentDetailPanel, PersonnelDetailPanel } from "../../components/MaosDetailPanel";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
 import { SectionLayout } from "../../components/SectionLayout";
+import { RecentEntities } from "../../components/RecentEntities";
 import { Agent, MapNode, NodeKind, Personnel } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
 
@@ -28,6 +30,29 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 
 const FILTERS_KEY = "maos_map_filters_v1";
 const levelOrder: Personnel["positionLevel"][] = ["Executive", "Director", "Manager", "Lead", "IC"];
+
+const FilterChip = ({
+  label,
+  active,
+  onClick
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={clsx(
+      "rounded-full border px-3 py-1 text-xs font-medium transition",
+      active
+        ? "border-[color:var(--accent)] bg-[var(--selection)] text-[color:var(--text)]"
+        : "border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--muted)] hover:text-[color:var(--text)]"
+    )}
+  >
+    {label}
+  </button>
+);
 
 type MapFilters = {
   positionLevels: Personnel["positionLevel"][];
@@ -60,7 +85,7 @@ const isFilters = (value: unknown): value is MapFilters => {
 };
 
 function MapContent() {
-  const { personnel, agents, mapState, setMapState, tasks } = useMaosStore();
+  const { personnel, agents, mapState, setMapState, tasks, addRecentEntity } = useMaosStore();
   const [connectMode, setConnectMode] = useState(false);
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -290,8 +315,8 @@ function MapContent() {
       suppressClick.current = false;
       return;
     }
+    setSelectedNodeId(nodeId);
     if (!connectMode) {
-      setSelectedNodeId(nodeId);
       return;
     }
     if (!connectFromId) {
@@ -449,6 +474,24 @@ function MapContent() {
 
   const emptyCanvas = visibleNodes.length === 0;
 
+  useEffect(() => {
+    if (selectedPersonnel) {
+      addRecentEntity({
+        id: selectedPersonnel.id,
+        kind: "personnel",
+        name: selectedPersonnel.name,
+        subtitle: selectedPersonnel.title
+      });
+    } else if (selectedAgent) {
+      addRecentEntity({
+        id: selectedAgent.id,
+        kind: "agent",
+        name: selectedAgent.name,
+        subtitle: selectedAgent.module
+      });
+    }
+  }, [addRecentEntity, selectedAgent, selectedPersonnel]);
+
   const renderHoveredMetrics = () => {
     if (hoveredPersonnel?.metrics.sales) {
       return `Calls/week ${hoveredPersonnel.metrics.sales.callsWeek} · Sales/week ${hoveredPersonnel.metrics.sales.salesWeek}`;
@@ -462,12 +505,23 @@ function MapContent() {
     return "Capacity insight available";
   };
 
-  const detailPanel = selectedPersonnel ? (
-    <PersonnelDetailPanel person={selectedPersonnel} onClose={() => setSelectedNodeId(null)} />
-  ) : selectedAgent ? (
-    <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedNodeId(null)} />
-  ) : (
-    <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">Select a node to view details.</Card>
+  const handleRecentSelect = (entity: { id: string; kind: NodeKind }) => {
+    const nodeId = ensureNodeOnCanvas(entity.kind, entity.id);
+    setSelectedNodeId(nodeId);
+    setHighlightedNodeId(nodeId);
+  };
+
+  const detailPanel = (
+    <div className="space-y-4">
+      {selectedPersonnel ? (
+        <PersonnelDetailPanel person={selectedPersonnel} onClose={() => setSelectedNodeId(null)} />
+      ) : selectedAgent ? (
+        <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedNodeId(null)} />
+      ) : (
+        <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">Select a node to view details.</Card>
+      )}
+      <RecentEntities onSelect={handleRecentSelect} />
+    </div>
   );
 
   return (
@@ -551,120 +605,133 @@ function MapContent() {
             <Badge label={`${visibleSummary.edgeCount} Edges`} />
             <div>{connectMode ? "Connect mode: select two nodes" : layoutMode === "hierarchy" ? "Hierarchy mode on" : "Drag nodes to arrange"}</div>
           </div>
-          <div className="space-y-3">
-            <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Filters</div>
-            <div className="space-y-3 text-xs text-[color:var(--muted)]">
-              <div className="font-semibold text-[color:var(--text)]">Personnel level</div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" className="text-xs" onClick={() => setFilters((prev) => ({ ...prev, positionLevels: ["Executive"] }))}>
-                  Executive only
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-xs"
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Filters</div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setFilters({
+                    positionLevels: levelOrder,
+                    teams: [],
+                    modules: [],
+                    showConnectedOnly: false,
+                    showTaskQueue: filters.showTaskQueue
+                  })
+                }
+              >
+                Clear all
+              </Button>
+            </div>
+            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--panel2)] p-3">
+              <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Quick presets</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <FilterChip
+                  label="Exec + Directors"
+                  active={filters.positionLevels.length === 2 && filters.positionLevels.includes("Executive") && filters.positionLevels.includes("Director")}
                   onClick={() => setFilters((prev) => ({ ...prev, positionLevels: ["Executive", "Director"] }))}
-                >
-                  Exec + Directors
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-xs"
-                  onClick={() => setFilters((prev) => ({ ...prev, positionLevels: ["Executive", "Director", "Manager"] }))}
-                >
-                  Exec + Directors + Managers
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-xs"
-                  onClick={() => setFilters((prev) => ({ ...prev, positionLevels: levelOrder }))}
-                >
-                  All
+                />
+                <FilterChip
+                  label="Sales team"
+                  active={filters.teams.length === 1 && filters.teams.includes("Sales")}
+                  onClick={() => setFilters((prev) => ({ ...prev, teams: ["Sales"], positionLevels: levelOrder }))}
+                />
+                <FilterChip
+                  label="Finance modules"
+                  active={filters.modules.length === 2 && filters.modules.includes("Ledger Close") && filters.modules.includes("AR Follow-up")}
+                  onClick={() =>
+                    setFilters((prev) => ({ ...prev, modules: ["Ledger Close", "AR Follow-up"], positionLevels: levelOrder }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
+                <span>Personnel level</span>
+                <Button variant="ghost" size="sm" onClick={() => setFilters((prev) => ({ ...prev, positionLevels: [] }))}>
+                  Clear ({filters.positionLevels.length})
                 </Button>
               </div>
-              <div className="grid gap-2">
+              <div className="flex flex-wrap gap-2">
                 {levelOrder.map((level) => (
-                  <label key={level} className="flex items-center gap-2 text-xs text-[color:var(--text)]">
-                    <input
-                      type="checkbox"
-                      checked={filters.positionLevels.includes(level)}
-                      onChange={(event) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          positionLevels: event.target.checked
-                            ? [...prev.positionLevels, level]
-                            : prev.positionLevels.filter((item) => item !== level)
-                        }))
-                      }
-                    />
-                    {level}
-                  </label>
+                  <FilterChip
+                    key={level}
+                    label={level}
+                    active={filters.positionLevels.includes(level)}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        positionLevels: prev.positionLevels.includes(level)
+                          ? prev.positionLevels.filter((item) => item !== level)
+                          : [...prev.positionLevels, level]
+                      }))
+                    }
+                  />
                 ))}
               </div>
             </div>
-            <div className="space-y-2 text-xs text-[color:var(--muted)]">
-              <div className="font-semibold text-[color:var(--text)]">Teams</div>
-              {availableTeams.map((team) => (
-                <label key={team} className="flex items-center gap-2 text-xs text-[color:var(--text)]">
-                  <input
-                    type="checkbox"
-                    checked={filters.teams.includes(team)}
-                    onChange={(event) =>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
+                <span>Teams</span>
+                <Button variant="ghost" size="sm" onClick={() => setFilters((prev) => ({ ...prev, teams: [] }))}>
+                  Clear ({filters.teams.length})
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableTeams.map((team) => (
+                  <FilterChip
+                    key={team}
+                    label={team}
+                    active={filters.teams.includes(team)}
+                    onClick={() =>
                       setFilters((prev) => ({
                         ...prev,
-                        teams: event.target.checked ? [...prev.teams, team] : prev.teams.filter((item) => item !== team)
+                        teams: prev.teams.includes(team) ? prev.teams.filter((item) => item !== team) : [...prev.teams, team]
                       }))
                     }
                   />
-                  {team}
-                </label>
-              ))}
+                ))}
+              </div>
             </div>
-            <div className="space-y-2 text-xs text-[color:var(--muted)]">
-              <div className="font-semibold text-[color:var(--text)]">Agent modules</div>
-              {availableModules.map((module) => (
-                <label key={module} className="flex items-center gap-2 text-xs text-[color:var(--text)]">
-                  <input
-                    type="checkbox"
-                    checked={filters.modules.includes(module)}
-                    onChange={(event) =>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
+                <span>Agent modules</span>
+                <Button variant="ghost" size="sm" onClick={() => setFilters((prev) => ({ ...prev, modules: [] }))}>
+                  Clear ({filters.modules.length})
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableModules.map((module) => (
+                  <FilterChip
+                    key={module}
+                    label={module}
+                    active={filters.modules.includes(module)}
+                    onClick={() =>
                       setFilters((prev) => ({
                         ...prev,
-                        modules: event.target.checked
-                          ? [...prev.modules, module]
-                          : prev.modules.filter((item) => item !== module)
+                        modules: prev.modules.includes(module)
+                          ? prev.modules.filter((item) => item !== module)
+                          : [...prev.modules, module]
                       }))
                     }
                   />
-                  {module}
-                </label>
-              ))}
+                ))}
+              </div>
             </div>
-            <label className="flex items-center gap-2 text-xs text-[color:var(--text)]">
-              <input
-                type="checkbox"
-                checked={filters.showConnectedOnly}
-                onChange={(event) => setFilters((prev) => ({ ...prev, showConnectedOnly: event.target.checked }))}
-              />
-              Show connected only
-            </label>
-            <div className="text-xs text-[color:var(--muted)]">
-              Showing {visibleSummary.personnelCount} personnel, {visibleSummary.agentCount} agents, {visibleSummary.edgeCount} edges
+            <div className="rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] p-3 text-xs text-[color:var(--muted)]">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.showConnectedOnly}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, showConnectedOnly: event.target.checked }))}
+                />
+                <span className="text-[color:var(--text)]">Show connected only</span>
+              </div>
+              <div className="mt-2 text-[11px] text-[color:var(--muted)]">
+                Showing {visibleSummary.personnelCount} personnel, {visibleSummary.agentCount} agents, {visibleSummary.edgeCount} edges
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              className="text-xs"
-              onClick={() =>
-                setFilters({
-                  positionLevels: levelOrder,
-                  teams: [],
-                  modules: [],
-                  showConnectedOnly: false,
-                  showTaskQueue: filters.showTaskQueue
-                })
-              }
-            >
-              Clear filters
-            </Button>
           </div>
           <div>
             <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Legend</div>
@@ -679,8 +746,8 @@ function MapContent() {
     >
       <div className="space-y-6">
         <PageHeader
-          title="Moneta Analytica OS Map"
-          subtitle="System topology connecting personnel and autonomous agents."
+          title="MAOS Map"
+          subtitle="System topology connecting Moneta Analytica Agent Team personnel and autonomous agents."
         />
 
         <Card className="relative overflow-hidden p-0">

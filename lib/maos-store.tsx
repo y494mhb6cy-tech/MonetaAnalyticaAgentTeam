@@ -16,6 +16,14 @@ const PERSONNEL_KEY = `maos_personnel_${DEMO_VERSION}`;
 const AGENTS_KEY = `maos_agents_${DEMO_VERSION}`;
 const MAP_KEY = `maos_map_state_${DEMO_VERSION}`;
 const TASKS_KEY = "maos_tasks_v1";
+const RECENTS_KEY = "maos_recent_entities_v1";
+
+type RecentEntity = {
+  id: string;
+  kind: "personnel" | "agent";
+  name: string;
+  subtitle: string;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
@@ -56,6 +64,18 @@ const isTask = (value: unknown): value is Task => {
     typeof value.status === "string" &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
+  );
+};
+
+const isRecentEntity = (value: unknown): value is RecentEntity => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.id === "string" &&
+    (value.kind === "personnel" || value.kind === "agent") &&
+    typeof value.name === "string" &&
+    typeof value.subtitle === "string"
   );
 };
 
@@ -233,11 +253,17 @@ type MaosContextValue = {
   agents: Agent[];
   mapState: MapState;
   tasks: Task[];
+  recentEntities: RecentEntity[];
+  aiPanelOpen: boolean;
+  aiContext: { kind: "personnel" | "agent"; id: string } | null;
   setMapState: React.Dispatch<React.SetStateAction<MapState>>;
+  setAiPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setAiContext: React.Dispatch<React.SetStateAction<{ kind: "personnel" | "agent"; id: string } | null>>;
   addPersonnel: () => Personnel;
   addAgent: () => Agent;
   addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => Task;
   updateTask: (task: Task) => void;
+  addRecentEntity: (entity: RecentEntity) => void;
   resetDemoData: () => void;
 };
 
@@ -250,6 +276,9 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
   const [agents, setAgents] = useState<Agent[]>(seed.agents);
   const [mapState, setMapState] = useState<MapState>(seed.mapState);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
+  const [recentEntities, setRecentEntities] = useState<RecentEntity[]>([]);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiContext, setAiContext] = useState<{ kind: "personnel" | "agent"; id: string } | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -272,6 +301,7 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     const storedAgents = load<unknown>(AGENTS_KEY);
     const storedMap = load<unknown>(MAP_KEY);
     const storedTasks = load<unknown>(TASKS_KEY);
+    const storedRecents = load<unknown>(RECENTS_KEY);
 
     if (Array.isArray(storedPersonnel) && storedPersonnel.every(isPersonnel)) {
       setPersonnel(storedPersonnel);
@@ -293,6 +323,9 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     } else {
       setTasks(seedTasks);
     }
+    if (Array.isArray(storedRecents) && storedRecents.every(isRecentEntity)) {
+      setRecentEntities(storedRecents);
+    }
 
     setHasHydrated(true);
   }, [seed, seedTasks]);
@@ -306,9 +339,10 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
       window.localStorage.setItem(MAP_KEY, JSON.stringify(mapState));
       window.localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+      window.localStorage.setItem(RECENTS_KEY, JSON.stringify(recentEntities));
     }, 400);
     return () => window.clearTimeout(handle);
-  }, [agents, hasHydrated, mapState, personnel, tasks]);
+  }, [agents, hasHydrated, mapState, personnel, recentEntities, tasks]);
 
   const resetDemoData = useCallback(() => {
     if (typeof window === "undefined") {
@@ -319,10 +353,12 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.removeItem(AGENTS_KEY);
     window.localStorage.removeItem(MAP_KEY);
     window.localStorage.removeItem(TASKS_KEY);
+    window.localStorage.removeItem(RECENTS_KEY);
     setPersonnel(nextSeed.personnel);
     setAgents(nextSeed.agents);
     setMapState(nextSeed.mapState);
     setTasks(seedMaosTasks(nextSeed.personnel, nextSeed.agents));
+    setRecentEntities([]);
   }, []);
 
   const addPersonnel = useCallback(() => {
@@ -361,20 +397,47 @@ export function MaosProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => prev.map((item) => (item.id === task.id ? task : item)));
   }, []);
 
+  const addRecentEntity = useCallback((entity: RecentEntity) => {
+    setRecentEntities((prev) => {
+      const filtered = prev.filter((item) => !(item.id === entity.id && item.kind === entity.kind));
+      return [entity, ...filtered].slice(0, 5);
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       personnel,
       agents,
       mapState,
       tasks,
+      recentEntities,
+      aiPanelOpen,
+      aiContext,
       setMapState,
+      setAiPanelOpen,
+      setAiContext,
       addPersonnel,
       addAgent,
       addTask,
       updateTask,
+      addRecentEntity,
       resetDemoData
     }),
-    [addAgent, addPersonnel, addTask, agents, mapState, personnel, resetDemoData, tasks, updateTask]
+    [
+      addAgent,
+      addPersonnel,
+      addRecentEntity,
+      addTask,
+      agents,
+      aiContext,
+      aiPanelOpen,
+      mapState,
+      personnel,
+      recentEntities,
+      resetDemoData,
+      tasks,
+      updateTask
+    ]
   );
 
   return <MaosContext.Provider value={value}>{children}</MaosContext.Provider>;

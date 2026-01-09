@@ -94,7 +94,7 @@ export default function TaskBuilderPage() {
       <div className="space-y-8">
         <PageHeader
           title="Agents Builder"
-          subtitle="Create and refine single-task Agents for Moneta Analytica OS output runs."
+          subtitle="Create and refine single-task Agents for MAOS (Moneta Analytica Agent Team) output runs."
           actions={<Button onClick={onCreate}>New Agent</Button>}
         />
 

@@ -29,7 +29,7 @@ export function buildPrompt(task: TaskRabbit, inputs: RunInput[], mode: Mode) {
     })
     .join("\n");
 
-  return `Moneta Analytica Contract: Profit/Process/Objectivity\n\nProfit: ${contract.profit}\nProcess: ${contract.process}\nObjectivity: ${contract.objectivity}\n\nTask: ${task.name}\nDescription: ${task.description}\nMode: ${mode}\n\nInputs:\n${inputBlock}\n\nRespond with valid JSON matching:\n{\n  "title": "...",\n  "sections": [\n    {"heading":"...", "bullets":["..."], "narrative":"..."}\n  ],\n  "risks": ["..."],\n  "next_actions": ["..."],\n  "contract_alignment": {\n    "profit": ["..."],\n    "process": ["..."],\n    "objectivity": ["..."]\n  }\n}`;
+  return `MAOS Contract: Profit/Process/Objectivity\n\nProfit: ${contract.profit}\nProcess: ${contract.process}\nObjectivity: ${contract.objectivity}\n\nTask: ${task.name}\nDescription: ${task.description}\nMode: ${mode}\n\nInputs:\n${inputBlock}\n\nRespond with valid JSON matching:\n{\n  "title": "...",\n  "sections": [\n    {"heading":"...", "bullets":["..."], "narrative":"..."}\n  ],\n  "risks": ["..."],\n  "next_actions": ["..."],\n  "contract_alignment": {\n    "profit": ["..."],\n    "process": ["..."],\n    "objectivity": ["..."]\n  }\n}`;
 }
 
 export function stringifyMarkdown(output: StructuredOutput) {
