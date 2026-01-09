@@ -1,126 +1,502 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { AgentArchitectureGraph } from "@/components/AgentArchitectureGraph";
+import {
+  mockAgentDepartments,
+  mockAgentModules,
+  mockAgentNodes,
+  mockAgentDependencies,
+  filterModules,
+  filterAgents,
+  getAgentsByModule,
+  getDependencies,
+  type AgentModule,
+  type AgentNode,
+  type AgentStatus,
+  type AgentCriticality,
+} from "@/lib/mockData";
+import {
+  Search,
+  X,
+  Activity,
+  Layers,
+  Cpu,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 
 export default function AgentArchitecturePage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<AgentStatus | "">("");
+  const [selectedCriticality, setSelectedCriticality] = useState<AgentCriticality | "">("");
+  const [selectedNode, setSelectedNode] = useState<AgentModule | AgentNode | null>(null);
+  const [showFilters, setShowFilters] = useState(true);
+
+  // Filter modules and agents based on criteria
+  const filteredModules = useMemo(() => {
+    return filterModules({
+      search: searchQuery,
+      departmentId: selectedDepartment || undefined,
+      status: selectedStatus || undefined,
+      criticality: selectedCriticality || undefined,
+    });
+  }, [searchQuery, selectedDepartment, selectedStatus, selectedCriticality]);
+
+  const filteredAgents = useMemo(() => {
+    // Get agents from filtered modules
+    const moduleIds = new Set(filteredModules.map((m) => m.id));
+    return mockAgentNodes.filter((a) => moduleIds.has(a.moduleId));
+  }, [filteredModules]);
+
+  const filteredDependencies = useMemo(() => {
+    const nodeIds = new Set([
+      ...filteredModules.map((m) => m.id),
+      ...filteredAgents.map((a) => a.id),
+    ]);
+    return mockAgentDependencies.filter(
+      (d) => nodeIds.has(d.fromId) && nodeIds.has(d.toId)
+    );
+  }, [filteredModules, filteredAgents]);
+
+  const handleModuleClick = (module: AgentModule) => {
+    setSelectedNode(module);
+  };
+
+  const handleAgentClick = (agent: AgentNode) => {
+    setSelectedNode(agent);
+  };
+
+  const getStatusIcon = (status: AgentStatus) => {
+    switch (status) {
+      case "healthy":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "warning":
+        return <AlertCircle className="w-4 h-4 text-amber-500" />;
+      case "critical":
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case "offline":
+        return <Activity className="w-4 h-4 text-slate-500" />;
+    }
+  };
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
   return (
-    <div className="h-screen w-full bg-slate-950 flex flex-col">
-      {/* Control bar */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-        <div className="flex items-center gap-1 rounded-lg bg-slate-900/90 p-1 backdrop-blur-sm border border-slate-700/50">
+    <div className="h-screen w-full bg-[var(--bg)] flex flex-col overflow-hidden">
+      {/* Top Navigation */}
+      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
+        <div className="flex items-center gap-1 rounded-lg bg-[var(--panel)] backdrop-blur-sm border border-[var(--border)] p-1">
           <Link
             href="/map"
-            className="px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover)] transition-colors"
           >
             Personnel
           </Link>
           <Link
             href="/map/agents"
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--accent)] text-slate-900 transition-colors"
           >
             Agents
           </Link>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          {/* Icon */}
-          <div className="mx-auto mb-6 w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center">
-            <svg
-              className="w-10 h-10 text-indigo-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
-              />
-            </svg>
-          </div>
-
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-white mb-3">
-            Agent Architecture
-          </h1>
-
-          {/* Description */}
-          <p className="text-slate-400 mb-8 leading-relaxed">
-            The Agent Architecture view shows the relationships between autonomous
-            agents, their modules, data flows, and dependencies. This view is designed
-            for technical operations and system monitoring.
-          </p>
-
-          {/* Status badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700/50">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-sm text-slate-300">Coming Soon</span>
-          </div>
-
-          {/* Features list */}
-          <div className="mt-8 text-left">
-            <div className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-              Planned Features
-            </div>
-            <ul className="space-y-2">
-              {[
-                "Agent dependency graph visualization",
-                "Real-time data flow monitoring",
-                "Module status and health indicators",
-                "Performance metrics overlay",
-                "Error trace visualization",
-              ].map((feature, idx) => (
-                <li
-                  key={idx}
-                  className="flex items-center gap-2 text-sm text-slate-400"
+      {/* Main Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Filter Panel */}
+        {showFilters && (
+          <div className="w-80 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col">
+            <div className="p-4 border-b border-[var(--border)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[var(--text)]">Filters</h2>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="md:hidden p-1 hover:bg-[var(--hover)] rounded"
                 >
-                  <svg
-                    className="w-4 h-4 text-slate-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-          {/* Back link */}
-          <div className="mt-8">
-            <Link
-              href="/map"
-              className="inline-flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+              {/* Search */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
+                <input
+                  type="text"
+                  placeholder="Search modules or agents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
-              </svg>
-              Back to Personnel Map
-            </Link>
+              </div>
+
+              {/* Department Filter */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-[var(--muted)] mb-2">
+                  Department
+                </label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  <option value="">All Departments</option>
+                  {mockAgentDepartments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-[var(--muted)] mb-2">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value as AgentStatus | "")}
+                  className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="healthy">Healthy</option>
+                  <option value="warning">Warning</option>
+                  <option value="critical">Critical</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+
+              {/* Criticality Filter */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-[var(--muted)] mb-2">
+                  Criticality
+                </label>
+                <select
+                  value={selectedCriticality}
+                  onChange={(e) => setSelectedCriticality(e.target.value as AgentCriticality | "")}
+                  className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  <option value="">All Levels</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+
+              {/* Clear Filters */}
+              {(searchQuery || selectedDepartment || selectedStatus || selectedCriticality) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedDepartment("");
+                    setSelectedStatus("");
+                    setSelectedCriticality("");
+                  }}
+                  className="w-full px-4 py-2 text-sm text-[var(--accent)] hover:bg-[var(--hover)] rounded-lg transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+
+            {/* Results Summary */}
+            <div className="p-4 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-1">
+                  <Layers className="w-4 h-4 text-[var(--accent)]" />
+                  <span className="text-[var(--text)] font-medium">{filteredModules.length}</span>
+                  <span className="text-[var(--muted)]">modules</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Cpu className="w-4 h-4 text-[var(--accent)]" />
+                  <span className="text-[var(--text)] font-medium">{filteredAgents.length}</span>
+                  <span className="text-[var(--muted)]">agents</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Department Stats */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <h3 className="text-xs font-medium text-[var(--muted)] mb-3 uppercase tracking-wider">
+                Department Health
+              </h3>
+              <div className="space-y-2">
+                {mockAgentDepartments.map((dept) => (
+                  <div
+                    key={dept.id}
+                    className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded"
+                          style={{ backgroundColor: dept.color }}
+                        />
+                        <span className="text-sm font-medium text-[var(--text)]">
+                          {dept.name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-[var(--muted)]">
+                        {dept.healthScore}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${dept.healthScore}%`,
+                          backgroundColor: dept.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Main Graph Area */}
+        <div className="flex-1 relative">
+          {!showFilters && (
+            <button
+              onClick={() => setShowFilters(true)}
+              className="absolute top-4 left-4 z-20 p-2 bg-[var(--panel)] border border-[var(--border)] rounded-lg hover:bg-[var(--hover)]"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          )}
+
+          {filteredModules.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-md px-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center">
+                  <Layers className="w-8 h-8 text-[var(--muted)]" />
+                </div>
+                <h3 className="text-lg font-semibold text-[var(--text)] mb-2">
+                  No modules found
+                </h3>
+                <p className="text-sm text-[var(--muted)] mb-4">
+                  No modules match your current filter criteria. Try adjusting your filters or clearing them to see all modules.
+                </p>
+                {(searchQuery || selectedDepartment || selectedStatus || selectedCriticality) && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedDepartment("");
+                      setSelectedStatus("");
+                      setSelectedCriticality("");
+                    }}
+                    className="px-4 py-2 text-sm text-[var(--accent)] hover:bg-[var(--hover)] rounded-lg transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <AgentArchitectureGraph
+              departments={mockAgentDepartments}
+              modules={filteredModules}
+              agents={filteredAgents}
+              dependencies={filteredDependencies}
+              onModuleClick={handleModuleClick}
+              onAgentClick={handleAgentClick}
+            />
+          )}
         </div>
+
+        {/* Right Detail Drawer */}
+        {selectedNode && (
+          <div className="w-96 bg-[var(--panel)] border-l border-[var(--border)] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-[var(--border)]">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {"moduleId" in selectedNode ? (
+                    <Cpu className="w-5 h-5 text-[var(--accent)]" />
+                  ) : (
+                    <Layers className="w-5 h-5 text-[var(--accent)]" />
+                  )}
+                  <h2 className="text-lg font-semibold text-[var(--text)]">
+                    {selectedNode.name}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="p-1 hover:bg-[var(--hover)] rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div className="flex items-center gap-2 mb-3">
+                {getStatusIcon(selectedNode.status)}
+                <span className="text-sm font-medium text-[var(--text)] capitalize">
+                  {selectedNode.status}
+                </span>
+                <span className="ml-auto text-xs px-2 py-1 bg-[var(--bg)] rounded text-[var(--muted)] uppercase">
+                  {selectedNode.criticality}
+                </span>
+              </div>
+
+              <p className="text-sm text-[var(--muted)]">{selectedNode.description}</p>
+            </div>
+
+            {/* Details */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Metrics */}
+              <div>
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                  Metrics
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg">
+                    <div className="text-xs text-[var(--muted)] mb-1">Health Score</div>
+                    <div className="text-xl font-semibold text-[var(--text)]">
+                      {selectedNode.healthScore}%
+                    </div>
+                  </div>
+
+                  {"runsToday" in selectedNode && (
+                    <>
+                      <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg">
+                        <div className="text-xs text-[var(--muted)] mb-1">Runs Today</div>
+                        <div className="text-xl font-semibold text-[var(--text)]">
+                          {selectedNode.runsToday}
+                        </div>
+                      </div>
+                      <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg">
+                        <div className="text-xs text-[var(--muted)] mb-1">Success Rate</div>
+                        <div className="text-xl font-semibold text-[var(--text)]">
+                          {selectedNode.successRate}%
+                        </div>
+                      </div>
+                      <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg">
+                        <div className="text-xs text-[var(--muted)] mb-1">Avg Latency</div>
+                        <div className="text-xl font-semibold text-[var(--text)]">
+                          {selectedNode.avgLatencyMs}ms
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {"agentCount" in selectedNode && (
+                    <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg">
+                      <div className="text-xs text-[var(--muted)] mb-1">Agents</div>
+                      <div className="text-xl font-semibold text-[var(--text)]">
+                        {selectedNode.agentCount}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Last Run */}
+              <div>
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                  Last Run
+                </h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="w-4 h-4 text-[var(--muted)]" />
+                  <span className="text-[var(--text)]">
+                    {formatTime(selectedNode.lastRunAt)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Inputs */}
+              <div>
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                  Inputs
+                </h3>
+                <div className="space-y-1">
+                  {selectedNode.inputs.map((input, idx) => (
+                    <div
+                      key={idx}
+                      className="px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm text-[var(--text)]"
+                    >
+                      {input}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Outputs */}
+              <div>
+                <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                  Outputs
+                </h3>
+                <div className="space-y-1">
+                  {selectedNode.outputs.map((output, idx) => (
+                    <div
+                      key={idx}
+                      className="px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm text-[var(--text)]"
+                    >
+                      {output}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dependencies */}
+              {"moduleId" in selectedNode ? (
+                <div>
+                  <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                    Module
+                  </h3>
+                  <div className="px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm text-[var(--text)]">
+                    {mockAgentModules.find((m) => m.id === selectedNode.moduleId)?.name}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-xs font-medium text-[var(--muted)] mb-2 uppercase tracking-wider">
+                    Agents ({getAgentsByModule(selectedNode.id).length})
+                  </h3>
+                  <div className="space-y-1">
+                    {getAgentsByModule(selectedNode.id)
+                      .slice(0, 5)
+                      .map((agent) => (
+                        <div
+                          key={agent.id}
+                          className="px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded text-sm text-[var(--text)] flex items-center justify-between cursor-pointer hover:bg-[var(--hover)]"
+                          onClick={() => setSelectedNode(agent)}
+                        >
+                          <span>{agent.name}</span>
+                          <ChevronRight className="w-4 h-4 text-[var(--muted)]" />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Preview Button */}
+              <button className="w-full px-4 py-2 bg-gradient-to-r from-[var(--accent)] to-blue-500 text-slate-900 font-medium rounded-lg hover:opacity-90 transition-opacity">
+                AI Preview
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
