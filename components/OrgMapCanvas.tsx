@@ -125,6 +125,10 @@ export default function OrgMapCanvas({
   // Edge fade animation
   const [edgeOpacity, setEdgeOpacity] = useState(0);
 
+  // Slow rotation for outer activity layer (people)
+  const rotationRef = useRef<number>(0);
+  const ROTATION_SPEED = 0.00005; // Very slow rotation
+
   // Compute zoom level from scale
   const zoomLevel: ZoomLevel = useMemo(() => {
     if (transform.scale < 0.6) return 0;
@@ -237,6 +241,9 @@ export default function OrgMapCanvas({
       const dt = timestamp - lastTimeRef.current;
       lastTimeRef.current = timestamp;
 
+      // Update rotation for outer layer (subtle, continuous)
+      rotationRef.current += ROTATION_SPEED * dt;
+
       // Clear canvas
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(0, 0, width, height);
@@ -277,8 +284,10 @@ export default function OrgMapCanvas({
       // Draw core
       drawCore(ctx, data.core, timestamp);
 
-      // Draw nodes based on zoom level
+      // Draw nodes based on zoom level (with rotation applied)
       if (zoomLevel >= 1) {
+        ctx.save();
+        ctx.rotate(rotationRef.current);
         drawPeopleNodes(
           ctx,
           nodePositions.filter((n) => n.type === "person"),
@@ -288,6 +297,7 @@ export default function OrgMapCanvas({
           selectedPersonId ?? null,
           focusedDepartmentId ?? null
         );
+        ctx.restore();
       }
 
       // Draw department labels
@@ -660,18 +670,19 @@ function drawDepartmentLabels(
   deptNodes: NodePosition[],
   zoomLevel: ZoomLevel
 ) {
-  ctx.font = zoomLevel >= 1 ? "bold 13px Inter, system-ui, sans-serif" : "bold 11px Inter, system-ui, sans-serif";
+  // Always use larger, bold font for team labels - they must be visible at all zoom levels
+  ctx.font = zoomLevel >= 1 ? "bold 15px Inter, system-ui, sans-serif" : "bold 13px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   deptNodes.forEach((node) => {
     const dept = node.data as OrgDepartment;
 
-    // Background pill
+    // Background pill - larger and more prominent
     const textWidth = ctx.measureText(dept.name).width;
-    const padding = 8;
+    const padding = 10;
     const pillWidth = textWidth + padding * 2;
-    const pillHeight = 22;
+    const pillHeight = 26;
 
     ctx.beginPath();
     ctx.roundRect(
@@ -683,20 +694,18 @@ function drawDepartmentLabels(
     );
     ctx.fillStyle = "#1e293b";
     ctx.fill();
-    ctx.strokeStyle = dept.color + "60";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = dept.color + "80"; // More visible border
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Label text
-    ctx.fillStyle = "#f1f5f9";
+    // Label text - always white and bold
+    ctx.fillStyle = "#ffffff";
     ctx.fillText(dept.name, node.x, node.y);
 
-    // Active load badge (zoom level 1+)
-    if (zoomLevel >= 1) {
-      ctx.font = "10px Inter, system-ui, sans-serif";
-      ctx.fillStyle = "#94a3b8";
-      ctx.fillText(`${dept.activeLoad} active`, node.x, node.y + 18);
-    }
+    // Active load badge (always show for better context)
+    ctx.font = "11px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(`${dept.activeLoad} active`, node.x, node.y + 20);
   });
 }
 
@@ -723,42 +732,54 @@ function drawPeopleNodes(
     if (isSelected) radius = NODE_RADIUS * 1.5;
     else if (isHovered) radius = NODE_RADIUS * 1.3;
 
-    // Draw glow/pulse based on presence
+    // Draw glow/pulse based on presence - enhanced for visibility
     const baseColor = getPresenceColor(person.presence);
 
     if (person.presence === "active") {
-      // Pulse effect
+      // Enhanced pulse effect with glow
       const pulsePhase = (timestamp % PULSE_DURATION) / PULSE_DURATION;
-      const pulseRadius = radius + Math.sin(pulsePhase * Math.PI * 2) * 4;
-      const pulseOpacity = 0.3 - pulsePhase * 0.2;
+      const pulseRadius = radius + Math.sin(pulsePhase * Math.PI * 2) * 5;
+      const pulseOpacity = 0.4 - pulsePhase * 0.25;
 
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, pulseRadius + 4, 0, Math.PI * 2);
-      ctx.fillStyle = baseColor.replace(")", `, ${pulseOpacity})`).replace("rgb", "rgba");
-      ctx.fill();
-    } else if (person.presence === "blocked") {
-      // Breathing red effect
-      const breathPhase = (timestamp % BREATHING_DURATION) / BREATHING_DURATION;
-      const breathIntensity = 0.2 + Math.sin(breathPhase * Math.PI * 2) * 0.15;
-
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, radius + 6, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(239, 68, 68, ${breathIntensity})`;
-      ctx.fill();
-    } else if (person.presence === "online") {
-      // Soft glow
+      // Outer glow
       const gradient = ctx.createRadialGradient(
         node.x,
         node.y,
         radius,
         node.x,
         node.y,
-        radius + 8
+        pulseRadius + 6
       );
-      gradient.addColorStop(0, baseColor.replace(")", ", 0.4)").replace("rgb", "rgba"));
-      gradient.addColorStop(1, "rgba(59, 130, 246, 0)");
+      gradient.addColorStop(0, `rgba(34, 197, 94, ${pulseOpacity * 0.8})`);
+      gradient.addColorStop(1, "rgba(34, 197, 94, 0)");
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, pulseRadius + 6, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    } else if (person.presence === "blocked") {
+      // Breathing red effect - more prominent
+      const breathPhase = (timestamp % BREATHING_DURATION) / BREATHING_DURATION;
+      const breathIntensity = 0.25 + Math.sin(breathPhase * Math.PI * 2) * 0.2;
+
       ctx.beginPath();
       ctx.arc(node.x, node.y, radius + 8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(239, 68, 68, ${breathIntensity})`;
+      ctx.fill();
+    } else if (person.presence === "online") {
+      // Soft steady glow - more visible
+      const gradient = ctx.createRadialGradient(
+        node.x,
+        node.y,
+        radius,
+        node.x,
+        node.y,
+        radius + 10
+      );
+      gradient.addColorStop(0, "rgba(59, 130, 246, 0.5)");
+      gradient.addColorStop(0.7, "rgba(59, 130, 246, 0.2)");
+      gradient.addColorStop(1, "rgba(59, 130, 246, 0)");
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, radius + 10, 0, Math.PI * 2);
       ctx.fillStyle = gradient;
       ctx.fill();
     }

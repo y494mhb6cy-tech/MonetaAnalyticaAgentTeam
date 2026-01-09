@@ -9,8 +9,7 @@ export function TopBar() {
   return (
     <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-[var(--panel)] px-5 py-3">
       <div>
-        <div className="text-xs uppercase tracking-[0.28em] text-[color:var(--muted)]">MAOS</div>
-        <div className="text-sm text-[color:var(--text)]">Moneta Analytica Agent Team</div>
+        <h1 className="text-2xl font-bold tracking-tight text-[color:var(--text)]">MAOS</h1>
       </div>
       <div className="flex items-center gap-3">
         <div className="hidden text-xs text-[color:var(--muted)] md:block">Cmd/Ctrl + K</div>

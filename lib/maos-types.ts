@@ -158,3 +158,46 @@ export type OrgMapData = {
   people: OrgPerson[];
   edges: FlowEdge[];
 };
+
+// Company Task List Types
+
+export type CompanyTaskType =
+  | "Sales"
+  | "OrderWriting"
+  | "DisputeResolution"
+  | "Admin"
+  | "Other";
+
+export type CompanyTaskRevenueImpact = "Revenue" | "NonRevenue";
+
+export type CompanyTaskPriority = "P1" | "P2" | "P3";
+
+export type CompanyTaskStatus = "Planned" | "InProgress" | "Blocked" | "Done";
+
+export type CompanyTask = {
+  id: string;
+  title: string;
+  description?: string;
+  ownerUserId: string;
+  teamId: string;
+  type: CompanyTaskType;
+  revenueImpact: CompanyTaskRevenueImpact;
+  priority: CompanyTaskPriority;
+  status: CompanyTaskStatus;
+  dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  linkedEntity?: {
+    type: "order" | "customer" | "dispute";
+    id: string;
+  };
+  estimatedEffort?: number; // in hours
+};
+
+export type TeamMetrics = {
+  teamId: string;
+  ordersWritten?: number;
+  totalCalls?: number;
+  customersReached?: number;
+  totalSales?: number;
+};
