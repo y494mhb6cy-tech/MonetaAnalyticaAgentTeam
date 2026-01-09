@@ -8,6 +8,7 @@ const items = [
   { href: "/map", label: "Map", icon: "🗺️" },
   { href: "/personnel", label: "Personnel", icon: "👥" },
   { href: "/agents", label: "Agents", icon: "🤖" },
+  { href: "/tasks", label: "Tasks", icon: "🧭" },
   { href: "/builder/tasks", label: "Builder", icon: "🧩" },
   { href: "/settings", label: "Settings", icon: "⚙️" }
 ];

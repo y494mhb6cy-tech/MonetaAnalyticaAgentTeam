@@ -43,7 +43,7 @@ export type Personnel = {
   id: string;
   name: string;
   title: string;
-  positionLevel: "IC" | "Lead" | "Manager" | "Director";
+  positionLevel: "Executive" | "Director" | "Manager" | "Lead" | "IC";
   team: "Sales" | "Finance" | "Ops" | "HR" | "Exec";
   primaryResponsibilities: string[];
   primaryTasks: string[];
@@ -93,4 +93,22 @@ export type MapState = {
   nodes: MapNode[];
   edges: MapEdge[];
   overlaysEnabled: boolean;
+};
+
+export type TaskStatus = "Backlog" | "In Progress" | "Blocked" | "Done";
+
+export type TaskOwnerType = "personnel" | "agent";
+
+export type Task = {
+  id: string;
+  title: string;
+  description?: string;
+  ownerType: TaskOwnerType;
+  ownerId: string;
+  priority: "Low" | "Med" | "High" | "Critical";
+  status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  dueDate?: string;
+  tags?: string[];
 };
