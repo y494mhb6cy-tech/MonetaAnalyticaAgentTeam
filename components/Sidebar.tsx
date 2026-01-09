@@ -6,6 +6,8 @@ import clsx from "clsx";
 
 const items = [
   { href: "/map", label: "Map" },
+  { href: "/personnel", label: "Personnel" },
+  { href: "/agents", label: "Agents" },
   { href: "/builder/tasks", label: "Builder" },
   { href: "/settings", label: "Settings" }
 ];

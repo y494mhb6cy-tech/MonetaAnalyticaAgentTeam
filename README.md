@@ -43,15 +43,18 @@ Use this when you need to force a clean build on Netlify.
 - Expected build command: `npm run build:clean`
 - Publish directory: `.next` with `@netlify/plugin-nextjs`
 
-## How to use Moneta Analytica OS Map
+## How to use Moneta Analytica OS (Map, Personnel, Agents)
 
-- Open `/map` to view the operating system canvas.
-- Use the sidebar tabs to browse Personnel or Agents; search filters the list.
-- Click an item to focus it on the canvas, or add it if it is not already placed.
-- Use **+ Add** to create new Personnel or Agent records with minimal fields.
-- Toggle **Connect Mode** and click a Personnel node, then an Agent node, to create a connection.
+- Open `/personnel` to browse human operators. Use search, team/status filters, and capacity ranges to refine the list.
+- Open `/agents` to browse autonomous modules. Use search, module/status filters, and utilization ranges to refine the list.
+- Select any row to open the right-side detail panel with full schema details and recent activity.
+- Click **View on map** to jump to `/map`, center on that node, and highlight it.
+- Use **Add new** on either list page to create a mock record (persisted to localStorage).
+- On `/map`, toggle **Connect Mode** and click a Personnel node, then an Agent node, to create a connection.
+- Hover nodes to see metadata and weekly metrics; click a node to open its detail drawer.
+- Toggle **Live overlays** to show the status pills near nodes.
 - Drag nodes freely to reposition them; use **Clear layout / Reset positions** if nodes drift off-screen.
-- The map persists nodes and connections in `localStorage` under `maos_map_state_v1`.
+- State persists under `maos_personnel_v1`, `maos_agents_v1`, and `maos_map_state_v1`.
 
 ## Notes
 
