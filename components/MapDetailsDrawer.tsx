@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import type { OrgPerson, OrgDepartment, PersonnelPresence } from "../lib/maos-types";
 import {
-  getTodaysPlan,
-  getTasksByPerson,
-  getTaskSummary,
-  getLinkedModules,
-  viewerCanSeeTasks,
-  type TaskStatus,
-} from "@/lib/mockData";
+  getTasksByPerson as getCompanyTasksByPerson,
+  companyTasks,
+} from "../lib/sales-mock-data";
+import type { CompanyTaskStatus } from "../lib/maos-types";
 import {
   Target,
   Clock,
@@ -20,6 +18,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 
 interface MapDetailsDrawerProps {
@@ -128,37 +127,36 @@ function PersonDetails({
   viewerId?: string;
 }) {
   const [expandedSection, setExpandedSection] = useState<
-    "plan" | "tasks" | "modules" | null
-  >("plan");
+    "tasks" | null
+  >("tasks");
 
-  const todaysPlan = getTodaysPlan(person.id);
-  const canSeeTasks = viewerId ? viewerCanSeeTasks(viewerId, person.id) : true;
-  const tasks = canSeeTasks ? getTasksByPerson(person.id) : [];
-  const taskSummary = getTaskSummary(person.id);
-  const linkedModules = getLinkedModules(person.id);
+  const tasks = getCompanyTasksByPerson(person.id);
+  const activeTasks = tasks.filter((t) => t.status !== "Done");
+  const plannedTasks = tasks.filter((t) => t.status === "Planned").length;
+  const inProgressTasks = tasks.filter((t) => t.status === "InProgress").length;
+  const blockedTasks = tasks.filter((t) => t.status === "Blocked").length;
+  const doneTasks = tasks.filter((t) => t.status === "Done").length;
 
-  const getTaskStatusIcon = (status: TaskStatus) => {
+  const getTaskStatusIcon = (status: CompanyTaskStatus) => {
     switch (status) {
-      case "todo":
+      case "Planned":
         return <Square className="w-4 h-4 text-slate-400" />;
-      case "doing":
+      case "InProgress":
         return <CheckSquare className="w-4 h-4 text-blue-400" />;
-      case "blocked":
+      case "Blocked":
         return <AlertCircle className="w-4 h-4 text-red-400" />;
-      case "done":
+      case "Done":
         return <CheckCircle className="w-4 h-4 text-green-400" />;
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "critical":
+      case "P1":
         return "text-red-400 bg-red-500/20";
-      case "high":
+      case "P2":
         return "text-amber-400 bg-amber-500/20";
-      case "medium":
-        return "text-blue-400 bg-blue-500/20";
-      case "low":
+      case "P3":
         return "text-slate-400 bg-slate-500/20";
       default:
         return "text-slate-400 bg-slate-500/20";
@@ -228,68 +226,7 @@ function PersonDetails({
         </div>
       </div>
 
-      {/* Today's Plan */}
-      {todaysPlan && (
-        <div className="border border-slate-700/50 rounded-lg overflow-hidden">
-          <button
-            onClick={() =>
-              setExpandedSection(expandedSection === "plan" ? null : "plan")
-            }
-            className="w-full px-3 py-2 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm font-medium text-white">Today's Plan</span>
-            </div>
-            {expandedSection === "plan" ? (
-              <ChevronUp className="w-4 h-4 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            )}
-          </button>
-          {expandedSection === "plan" && (
-            <div className="p-3 space-y-3">
-              {todaysPlan.topOutcomes.length > 0 && (
-                <div>
-                  <div className="text-xs text-slate-400 mb-2">Top Outcomes</div>
-                  <ul className="space-y-1">
-                    {todaysPlan.topOutcomes.map((outcome, idx) => (
-                      <li
-                        key={idx}
-                        className="text-xs text-white flex items-start gap-2"
-                      >
-                        <span className="text-indigo-400 font-medium">
-                          {idx + 1}.
-                        </span>
-                        <span>{outcome}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {todaysPlan.timeBlocks && (
-                <div>
-                  <div className="text-xs text-slate-400 mb-2">Schedule</div>
-                  <div className="space-y-1">
-                    {todaysPlan.timeBlocks.map((block, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 text-xs"
-                      >
-                        <Clock className="w-3 h-3 text-slate-500" />
-                        <span className="text-slate-400">{block.time}</span>
-                        <span className="text-white">{block.activity}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Task List */}
+      {/* Daily Tasks */}
       <div className="border border-slate-700/50 rounded-lg overflow-hidden">
         <button
           onClick={() =>
@@ -299,9 +236,9 @@ function PersonDetails({
         >
           <div className="flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-indigo-400" />
-            <span className="text-sm font-medium text-white">Tasks</span>
+            <span className="text-sm font-medium text-white">Daily Plan</span>
             <span className="text-xs text-slate-400">
-              ({taskSummary.todo + taskSummary.doing + taskSummary.blocked})
+              ({activeTasks.length} active)
             </span>
           </div>
           {expandedSection === "tasks" ? (
@@ -312,155 +249,86 @@ function PersonDetails({
         </button>
         {expandedSection === "tasks" && (
           <div className="p-3 space-y-3">
-            {canSeeTasks ? (
-              <>
-                {/* Task summary stats */}
-                <div className="grid grid-cols-4 gap-2 pb-2 border-b border-slate-700/50">
-                  <div className="text-center">
-                    <div className="text-xs text-slate-400">To Do</div>
-                    <div className="text-sm font-semibold text-white">
-                      {taskSummary.todo}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-slate-400">Doing</div>
-                    <div className="text-sm font-semibold text-blue-400">
-                      {taskSummary.doing}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-slate-400">Blocked</div>
-                    <div className="text-sm font-semibold text-red-400">
-                      {taskSummary.blocked}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-slate-400">Done</div>
-                    <div className="text-sm font-semibold text-green-400">
-                      {taskSummary.done}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Task list */}
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {tasks
-                    .filter((t) => t.status !== "done")
-                    .slice(0, 10)
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        className="p-2 bg-slate-800/30 rounded border border-slate-700/30"
-                      >
-                        <div className="flex items-start gap-2">
-                          {getTaskStatusIcon(task.status)}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs text-white font-medium truncate">
-                              {task.title}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className={`text-xs px-1.5 py-0.5 rounded ${getPriorityColor(
-                                  task.priority
-                                )}`}
-                              >
-                                {task.priority}
-                              </span>
-                              {task.dueDate && (
-                                <span className="text-xs text-slate-400">
-                                  {new Date(task.dueDate).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {tasks.filter((t) => t.status !== "done").length === 0 && (
-                    <div className="text-xs text-slate-400 text-center py-4">
-                      No active tasks
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <div className="text-xs text-slate-400">
-                  You don't have permission to view detailed tasks
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div className="p-2 bg-slate-800/30 rounded">
-                    <div className="text-xs text-slate-400">Active</div>
-                    <div className="text-lg font-semibold text-white">
-                      {taskSummary.todo + taskSummary.doing}
-                    </div>
-                  </div>
-                  <div className="p-2 bg-slate-800/30 rounded">
-                    <div className="text-xs text-slate-400">Blocked</div>
-                    <div className="text-lg font-semibold text-red-400">
-                      {taskSummary.blocked}
-                    </div>
-                  </div>
+            {/* Task summary stats */}
+            <div className="grid grid-cols-4 gap-2 pb-2 border-b border-slate-700/50">
+              <div className="text-center">
+                <div className="text-xs text-slate-400">Planned</div>
+                <div className="text-sm font-semibold text-white">
+                  {plannedTasks}
                 </div>
               </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-400">In Progress</div>
+                <div className="text-sm font-semibold text-blue-400">
+                  {inProgressTasks}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-400">Blocked</div>
+                <div className="text-sm font-semibold text-red-400">
+                  {blockedTasks}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-400">Done</div>
+                <div className="text-sm font-semibold text-green-400">
+                  {doneTasks}
+                </div>
+              </div>
+            </div>
+
+            {/* Task list preview */}
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {activeTasks.slice(0, 5).map((task) => (
+                <div
+                  key={task.id}
+                  className="p-2 bg-slate-800/30 rounded border border-slate-700/30"
+                >
+                  <div className="flex items-start gap-2">
+                    {getTaskStatusIcon(task.status)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-white font-medium truncate">
+                        {task.title}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded ${getPriorityColor(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
+                        {task.revenueImpact === "Revenue" && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">
+                            Revenue
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {activeTasks.length === 0 && (
+                <div className="text-xs text-slate-400 text-center py-4">
+                  No active tasks
+                </div>
+              )}
+            </div>
+
+            {/* Link to full task list */}
+            {tasks.length > 0 && (
+              <Link
+                href={`/company-tasks?person=${person.id}`}
+                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg transition-colors"
+              >
+                View All Tasks ({tasks.length})
+                <ExternalLink className="w-4 h-4" />
+              </Link>
             )}
           </div>
         )}
       </div>
 
-      {/* Linked Modules */}
-      {linkedModules.length > 0 && (
-        <div className="border border-slate-700/50 rounded-lg overflow-hidden">
-          <button
-            onClick={() =>
-              setExpandedSection(expandedSection === "modules" ? null : "modules")
-            }
-            className="w-full px-3 py-2 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm font-medium text-white">
-                Linked Modules
-              </span>
-              <span className="text-xs text-slate-400">
-                ({linkedModules.length})
-              </span>
-            </div>
-            {expandedSection === "modules" ? (
-              <ChevronUp className="w-4 h-4 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            )}
-          </button>
-          {expandedSection === "modules" && (
-            <div className="p-3 space-y-2">
-              {linkedModules.map((module, idx) => (
-                <div
-                  key={idx}
-                  className="p-2 bg-slate-800/30 rounded border border-slate-700/30"
-                >
-                  <div className="text-xs text-white font-medium">
-                    {module.moduleName}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {module.role}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="pt-2 space-y-2">
-        <button className="w-full px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors">
-          View Full Profile
-        </button>
-        <button className="w-full px-3 py-2 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
-          Assign Task
-        </button>
-      </div>
     </div>
   );
 }
@@ -552,12 +420,13 @@ function DepartmentDetails({ department }: { department: OrgDepartment }) {
 
       {/* Actions */}
       <div className="pt-4 border-t border-slate-700/50 space-y-2">
-        <button className="w-full px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors">
-          View Department
-        </button>
-        <button className="w-full px-3 py-2 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
-          View All Personnel
-        </button>
+        <Link
+          href={`/company-tasks?team=${department.id}`}
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+        >
+          View Team Tasks
+          <ExternalLink className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

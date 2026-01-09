@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { OrgPerson, OrgDepartment, OrgMapData } from "../../lib/maos-types";
-import { defaultOrgData } from "../../lib/org-map-data";
+import { salesOrgData } from "../../lib/sales-mock-data";
 import MapControlBar from "../../components/MapControlBar";
 import MapLegend from "../../components/MapLegend";
 import MapDetailsDrawer from "../../components/MapDetailsDrawer";
@@ -44,8 +44,8 @@ export default function PersonnelMapPage() {
     y: number;
   } | null>(null);
 
-  // Use default data (100 people) - can scale up to 1000 with generateOrgMapData(1000)
-  const orgData = useMemo<OrgMapData>(() => defaultOrgData, []);
+  // Use sales company data (120 people across 5 teams)
+  const orgData = useMemo<OrgMapData>(() => salesOrgData, []);
 
   // Handle window resize
   useEffect(() => {
