@@ -4,34 +4,36 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 className="text-3xl font-semibold">{title}</h1>
-        {subtitle ? <p className="text-slate-400 mt-2 max-w-2xl">{subtitle}</p> : null}
+        <h1 className="text-2xl font-semibold text-[var(--text)]">{title}</h1>
+        {subtitle ? <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex gap-3">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
   );
 }
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={clsx("bg-ink-800 rounded-2xl p-6 shadow-card border border-white/5", className)}>
+    <div className={clsx("rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-card", className)}>
       {children}
     </div>
   );
 }
 
-export function Badge({ label }: { label: string }) {
+export function Badge({ label, className }: { label: string; className?: string }) {
   return (
-    <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-slate-200">{label}</span>
+    <span className={clsx("rounded-full bg-[var(--hover)] px-2 py-1 text-xs text-[var(--text)]", className)}>
+      {label}
+    </span>
   );
 }
 
 export function Input({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      {label ? <span className="text-slate-300">{label}</span> : null}
+    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+      {label ? <span>{label}</span> : null}
       <input
-        className="bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+        className="rounded-lg border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
         {...props}
       />
     </label>
@@ -40,10 +42,10 @@ export function Input({ label, ...props }: React.InputHTMLAttributes<HTMLInputEl
 
 export function TextArea({ label, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      {label ? <span className="text-slate-300">{label}</span> : null}
+    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+      {label ? <span>{label}</span> : null}
       <textarea
-        className="bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[140px] focus:outline-none focus:ring-2 focus:ring-accent-500"
+        className="min-h-[140px] rounded-lg border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
         {...props}
       />
     </label>
@@ -52,10 +54,10 @@ export function TextArea({ label, ...props }: React.TextareaHTMLAttributes<HTMLT
 
 export function Select({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      {label ? <span className="text-slate-300">{label}</span> : null}
+    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+      {label ? <span>{label}</span> : null}
       <select
-        className="bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+        className="rounded-lg border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
         {...props}
       >
         {children}
@@ -69,13 +71,14 @@ export function Button({
   variant = "primary",
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "outline" }) {
   return (
     <button
       className={clsx(
-        "px-4 py-2 rounded-lg text-sm font-medium transition",
-        variant === "primary" && "bg-accent-500 text-ink-900 hover:bg-accent-500/90",
-        variant === "ghost" && "bg-white/5 text-white hover:bg-white/10",
+        "rounded-md px-3 py-2 text-sm font-medium transition",
+        variant === "primary" && "bg-[var(--accent)] text-[var(--bg)] hover:opacity-90",
+        variant === "ghost" && "text-[var(--text)] hover:bg-[var(--hover)]",
+        variant === "outline" && "border border-[var(--border)] text-[var(--text)] hover:bg-[var(--hover)]",
         className
       )}
       {...props}

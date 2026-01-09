@@ -1,24 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import { Badge, Button, Card, Input, PageHeader } from "../../components/ui";
-
-type NodeKind = "personnel" | "agent";
-
-type Personnel = { id: string; name: string; title?: string; team?: string };
-
-type Agent = { id: string; name: string; purpose?: string; module?: string };
-
-type MapNode = { id: string; kind: NodeKind; refId: string; position: { x: number; y: number } };
-
-type MapEdge = { id: string; fromNodeId: string; toNodeId: string; kind: "personnel-agent" };
-
-type MapState = {
-  personnel: Personnel[];
-  agents: Agent[];
-  nodes: MapNode[];
-  edges: MapEdge[];
-};
+import {
+  AgentProfile,
+  MapEdge,
+  MapNode,
+  MapState,
+  NodeKind,
+  PersonnelProfile,
+  demoStorageKeys,
+  getMapState,
+  saveMapState
+} from "../../lib/demo-data";
 
 type DragState = {
   id: string;
@@ -29,29 +24,16 @@ type DragState = {
 
 type Toast = { id: number; message: string };
 
-const storageKey = "maos_map_state_v1";
-
-const canvasSize = { width: 2000, height: 1200 };
-
-const nodeSizes: Record<NodeKind, { width: number; height: number }> = {
-  personnel: { width: 200, height: 92 },
-  agent: { width: 210, height: 96 }
+type OverlayState = {
+  showConnections: boolean;
+  showStatus: boolean;
 };
 
-const seedState: MapState = {
-  personnel: [
-    { id: "personnel-1", name: "Avery Quinn", title: "Ops Lead", team: "Operations" },
-    { id: "personnel-2", name: "Riley Chen", title: "Finance Partner", team: "Finance" }
-  ],
-  agents: [
-    { id: "agent-1", name: "Ledger Agent", purpose: "Close reporting", module: "Finance" },
-    { id: "agent-2", name: "Pulse Agent", purpose: "Workflow health", module: "Ops" }
-  ],
-  nodes: [
-    { id: "node-1", kind: "personnel", refId: "personnel-1", position: { x: 280, y: 220 } },
-    { id: "node-2", kind: "agent", refId: "agent-1", position: { x: 620, y: 240 } }
-  ],
-  edges: []
+const canvasSize = { width: 2600, height: 1600 };
+
+const nodeSizes: Record<NodeKind, { width: number; height: number }> = {
+  personnel: { width: 190, height: 86 },
+  agent: { width: 200, height: 90 }
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -65,14 +47,14 @@ const createId = () => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
-const isPersonnel = (value: unknown): value is Personnel => {
+const isPersonnel = (value: unknown): value is PersonnelProfile => {
   if (!isRecord(value)) {
     return false;
   }
   return typeof value.id === "string" && typeof value.name === "string";
 };
 
-const isAgent = (value: unknown): value is Agent => {
+const isAgent = (value: unknown): value is AgentProfile => {
   if (!isRecord(value)) {
     return false;
   }
@@ -122,27 +104,29 @@ const isMapState = (value: unknown): value is MapState => {
 };
 
 export default function MapPage() {
-  const [mapState, setMapState] = useState<MapState>(seedState);
+  const [mapState, setMapState] = useState<MapState>(() => getMapState());
   const [activeTab, setActiveTab] = useState<NodeKind>("personnel");
   const [search, setSearch] = useState("");
   const [connectMode, setConnectMode] = useState(false);
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [overlays, setOverlays] = useState<OverlayState>({ showConnections: true, showStatus: true });
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const canvasInnerRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef<DragState | null>(null);
   const suppressClick = useRef(false);
 
   const personnelById = useMemo(() => {
-    return mapState.personnel.reduce<Record<string, Personnel>>((acc, person) => {
+    return mapState.personnel.reduce<Record<string, PersonnelProfile>>((acc, person) => {
       acc[person.id] = person;
       return acc;
     }, {});
   }, [mapState.personnel]);
 
   const agentsById = useMemo(() => {
-    return mapState.agents.reduce<Record<string, Agent>>((acc, agent) => {
+    return mapState.agents.reduce<Record<string, AgentProfile>>((acc, agent) => {
       acc[agent.id] = agent;
       return acc;
     }, {});
@@ -164,6 +148,10 @@ export default function MapPage() {
     }
     return mapState.agents.filter((agent) => matchesSearch(agent.name));
   }, [activeTab, mapState.agents, mapState.personnel, search]);
+
+  const selectedNode = selectedNodeId ? nodeById[selectedNodeId] : null;
+  const selectedPerson = selectedNode?.kind === "personnel" ? personnelById[selectedNode.refId] : null;
+  const selectedAgent = selectedNode?.kind === "agent" ? agentsById[selectedNode.refId] : null;
 
   const showToast = useCallback((message: string) => {
     setToast({ id: Date.now(), message });
@@ -193,6 +181,7 @@ export default function MapPage() {
       const existing = mapState.nodes.find((node) => node.kind === kind && node.refId === refId);
       if (existing) {
         centerOnNode(existing.id);
+        setSelectedNodeId(existing.id);
         return;
       }
       const container = canvasRef.current;
@@ -206,6 +195,7 @@ export default function MapPage() {
       const newNode: MapNode = { id: createId(), kind, refId, position };
       setMapState((prev) => ({ ...prev, nodes: [...prev.nodes, newNode] }));
       requestAnimationFrame(() => centerOnNode(newNode.id));
+      setSelectedNodeId(newNode.id);
     },
     [centerOnNode, mapState.nodes]
   );
@@ -215,11 +205,37 @@ export default function MapPage() {
     const newId = createId();
     const name = `${baseName} ${kind === "personnel" ? mapState.personnel.length + 1 : mapState.agents.length + 1}`;
     if (kind === "personnel") {
-      const newPerson: Personnel = { id: newId, name, title: "Role", team: "Team" };
+      const newPerson: PersonnelProfile = {
+        id: newId,
+        name,
+        title: "Role",
+        level: "IC",
+        team: "Ops",
+        status: "Active",
+        capacity: "Balanced",
+        responsibilities: ["New responsibility"],
+        tasks: [{ task: "New task", role: "R" }],
+        metrics: {}
+      };
       setMapState((prev) => ({ ...prev, personnel: [...prev.personnel, newPerson] }));
       ensureNodeOnCanvas("personnel", newId);
     } else {
-      const newAgent: Agent = { id: newId, name, purpose: "Purpose", module: "Module" };
+      const newAgent: AgentProfile = {
+        id: newId,
+        name,
+        module: "Module",
+        purpose: "Purpose",
+        ownerTeam: "Ops",
+        inputs: ["Input"],
+        outputs: ["Output"],
+        runsToday: 0,
+        runsWeek: 0,
+        avgLatencyMs: 0,
+        successRate: 0.99,
+        errorRate: 0,
+        lastRunAt: new Date().toISOString(),
+        health: "Investigating"
+      };
       setMapState((prev) => ({ ...prev, agents: [...prev.agents, newAgent] }));
       ensureNodeOnCanvas("agent", newId);
     }
@@ -231,6 +247,7 @@ export default function MapPage() {
       return;
     }
     if (!connectMode) {
+      setSelectedNodeId(nodeId);
       return;
     }
     if (!connectFromId) {
@@ -273,24 +290,24 @@ export default function MapPage() {
   };
 
   const resetPositions = () => {
-    const columns = 4;
-    const horizontalSpacing = 260;
-    const verticalSpacing = 180;
+    const columns = 5;
+    const horizontalSpacing = 240;
+    const verticalSpacing = 170;
     setMapState((prev) => ({
       ...prev,
       nodes: prev.nodes.map((node, index) => {
         const row = Math.floor(index / columns);
         const col = index % columns;
         const size = nodeSizes[node.kind];
-        const x = clamp(140 + col * horizontalSpacing, 0, canvasSize.width - size.width);
-        const y = clamp(140 + row * verticalSpacing, 0, canvasSize.height - size.height);
+        const x = clamp(120 + col * horizontalSpacing, 0, canvasSize.width - size.width);
+        const y = clamp(120 + row * verticalSpacing, 0, canvasSize.height - size.height);
         return { ...node, position: { x, y } };
       })
     }));
   };
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem(demoStorageKeys.map) : null;
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as unknown;
@@ -309,7 +326,7 @@ export default function MapPage() {
       return;
     }
     const handle = window.setTimeout(() => {
-      window.localStorage.setItem(storageKey, JSON.stringify(mapState));
+      saveMapState(mapState);
     }, 400);
     return () => window.clearTimeout(handle);
   }, [hasHydrated, mapState]);
@@ -374,154 +391,129 @@ export default function MapPage() {
 
   const emptyCanvas = mapState.nodes.length === 0;
 
+  const connectedNodeIds = useMemo(() => {
+    if (!selectedNode) {
+      return [] as string[];
+    }
+    return mapState.edges
+      .filter((edge) => edge.fromNodeId === selectedNode.id || edge.toNodeId === selectedNode.id)
+      .map((edge) => (edge.fromNodeId === selectedNode.id ? edge.toNodeId : edge.fromNodeId));
+  }, [mapState.edges, selectedNode]);
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Moneta Analytica OS"
-        subtitle="Design your operating system map with personnel and agent connections."
-        actions={
-          <>
-            <Button
-              variant="ghost"
-              className={connectMode ? "border border-accent-500/60" : "border border-transparent"}
-              onClick={() => setConnectMode((prev) => !prev)}
-            >
-              {connectMode ? "Connect Mode On" : "Connect Mode"}
-            </Button>
-            <Button variant="ghost" onClick={resetPositions}>
-              Clear layout / Reset positions
-            </Button>
-          </>
-        }
+        title="Map"
+        subtitle="Monitor personnel-to-agent coverage and workload dependencies across the operating system."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[240px_1fr_320px]">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm uppercase text-slate-400">Sidebar</div>
-            <Badge label={activeTab === "personnel" ? `${mapState.personnel.length} Personnel` : `${mapState.agents.length} Agents`} />
-          </div>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                activeTab === "personnel" ? "bg-white/10 text-white" : "bg-white/5 text-slate-300"
-              }`}
-              onClick={() => setActiveTab("personnel")}
+          <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Map tools</div>
+          <div className="space-y-2">
+            <Button
+              variant={connectMode ? "primary" : "outline"}
+              className="w-full justify-center"
+              onClick={() => setConnectMode((prev) => !prev)}
             >
-              Personnel
-            </button>
-            <button
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                activeTab === "agent" ? "bg-white/10 text-white" : "bg-white/5 text-slate-300"
-              }`}
-              onClick={() => setActiveTab("agent")}
-            >
-              Agents
-            </button>
-          </div>
-          <Input
-            label={activeTab === "personnel" ? "Search personnel" : "Search agents"}
-            placeholder={activeTab === "personnel" ? "Filter by name" : "Filter by agent"}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-400">
-              {activeTab === "personnel" ? "Personnel list" : "Agent list"}
-            </div>
-            <Button variant="ghost" onClick={() => addItem(activeTab)}>
-              + Add
+              {connectMode ? "Connect Mode On" : "Connect Nodes"}
+            </Button>
+            <Button variant="outline" className="w-full" onClick={resetPositions}>
+              Reset layout
             </Button>
           </div>
           <div className="space-y-2">
-            {listItems.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-xs text-slate-500">
-                {activeTab === "personnel" ? "No personnel yet…" : "No agents yet…"}
-              </div>
-            ) : null}
-            {listItems.map((item) => {
-              const id = item.id;
-              const label = item.name;
-              const meta =
-                activeTab === "personnel"
-                  ? (item as Personnel).title || (item as Personnel).team
-                  : (item as Agent).purpose || (item as Agent).module;
-              return (
-                <button
-                  key={id}
-                  onClick={() => ensureNodeOnCanvas(activeTab, id)}
-                  className="w-full rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2 text-left text-sm hover:border-accent-500/60"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-white">{label}</div>
-                    <span className="text-xs text-slate-500">{activeTab === "personnel" ? "👤" : "🤖"}</span>
-                  </div>
-                  {meta ? <div className="text-xs text-slate-400 mt-1">{meta}</div> : null}
-                </button>
-              );
-            })}
+            <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Overlays</div>
+            <button
+              className={clsx(
+                "flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm",
+                overlays.showConnections
+                  ? "border-[var(--accent)] text-[var(--text)]"
+                  : "border-[var(--border)] text-[var(--muted)]"
+              )}
+              onClick={() => setOverlays((prev) => ({ ...prev, showConnections: !prev.showConnections }))}
+              type="button"
+            >
+              Connections
+              <span className="text-xs">{overlays.showConnections ? "On" : "Off"}</span>
+            </button>
+            <button
+              className={clsx(
+                "flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm",
+                overlays.showStatus
+                  ? "border-[var(--accent)] text-[var(--text)]"
+                  : "border-[var(--border)] text-[var(--muted)]"
+              )}
+              onClick={() => setOverlays((prev) => ({ ...prev, showStatus: !prev.showStatus }))}
+              type="button"
+            >
+              Status halos
+              <span className="text-xs">{overlays.showStatus ? "On" : "Off"}</span>
+            </button>
+          </div>
+          <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-3 text-xs text-[var(--muted)]">
+            Drag nodes to reposition. Use connect mode to link personnel to agents. Changes persist in local storage.
           </div>
         </Card>
 
         <Card className="relative overflow-hidden p-0">
-          <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
             <div>
-              <div className="text-sm text-slate-400">Canvas</div>
-              <div className="text-lg font-semibold text-white">Moneta Analytica OS Map</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Topology</div>
+              <div className="text-lg font-semibold">Operating System Map</div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
               <span>{connectMode ? "Connect mode: select two nodes" : "Drag nodes to arrange"}</span>
             </div>
           </div>
-          <div
-            ref={canvasRef}
-            className="relative h-[560px] w-full overflow-auto bg-ink-900/60"
-          >
-            <div
-              ref={canvasInnerRef}
-              className="relative"
-              style={{ width: canvasSize.width, height: canvasSize.height }}
-            >
-              <svg className="absolute inset-0 h-full w-full">
-                {mapState.edges.map((edge) => {
-                  const fromNode = nodeById[edge.fromNodeId];
-                  const toNode = nodeById[edge.toNodeId];
-                  if (!fromNode || !toNode) {
-                    return null;
-                  }
-                  const fromSize = nodeSizes[fromNode.kind];
-                  const toSize = nodeSizes[toNode.kind];
-                  const startX = fromNode.position.x + fromSize.width / 2;
-                  const startY = fromNode.position.y + fromSize.height / 2;
-                  const endX = toNode.position.x + toSize.width / 2;
-                  const endY = toNode.position.y + toSize.height / 2;
-                  return (
-                    <line
-                      key={edge.id}
-                      x1={startX}
-                      y1={startY}
-                      x2={endX}
-                      y2={endY}
-                      stroke="rgba(56, 189, 248, 0.6)"
-                      strokeWidth={2}
-                    />
-                  );
-                })}
-              </svg>
+          <div ref={canvasRef} className="relative h-[620px] w-full overflow-auto bg-[var(--bg)]">
+            <div ref={canvasInnerRef} className="relative" style={{ width: canvasSize.width, height: canvasSize.height }}>
+              {overlays.showConnections ? (
+                <svg className="absolute inset-0 h-full w-full">
+                  {mapState.edges.map((edge) => {
+                    const fromNode = nodeById[edge.fromNodeId];
+                    const toNode = nodeById[edge.toNodeId];
+                    if (!fromNode || !toNode) {
+                      return null;
+                    }
+                    const fromSize = nodeSizes[fromNode.kind];
+                    const toSize = nodeSizes[toNode.kind];
+                    const startX = fromNode.position.x + fromSize.width / 2;
+                    const startY = fromNode.position.y + fromSize.height / 2;
+                    const endX = toNode.position.x + toSize.width / 2;
+                    const endY = toNode.position.y + toSize.height / 2;
+                    return (
+                      <line
+                        key={edge.id}
+                        x1={startX}
+                        y1={startY}
+                        x2={endX}
+                        y2={endY}
+                        stroke="rgba(148, 163, 184, 0.35)"
+                        strokeWidth={1.6}
+                      />
+                    );
+                  })}
+                </svg>
+              ) : null}
               {mapState.nodes.map((node) => {
                 const size = nodeSizes[node.kind];
                 const isSelectedForConnect = connectMode && connectFromId === node.id;
+                const isSelected = selectedNodeId === node.id;
                 const personnel = node.kind === "personnel" ? personnelById[node.refId] : null;
                 const agent = node.kind === "agent" ? agentsById[node.refId] : null;
                 return (
                   <button
                     key={node.id}
                     type="button"
-                    className={`absolute rounded-2xl border px-4 py-3 text-left shadow-card transition ${
+                    className={clsx(
+                      "absolute rounded-xl border px-3 py-2 text-left text-xs shadow-card transition",
                       node.kind === "personnel"
-                        ? "border-emerald-400/40 bg-emerald-500/10"
-                        : "border-sky-400/40 bg-sky-500/10"
-                    } ${isSelectedForConnect ? "ring-2 ring-accent-500" : ""}`}
+                        ? "border-emerald-300/40 bg-emerald-500/10"
+                        : "border-sky-300/40 bg-sky-500/10",
+                      isSelectedForConnect && "ring-2 ring-[var(--accent)]",
+                      isSelected && "outline outline-1 outline-[var(--accent)]"
+                    )}
                     style={{ left: node.position.x, top: node.position.y, width: size.width, height: size.height }}
                     onPointerDown={(event) => {
                       if (event.button !== 0) {
@@ -541,37 +533,229 @@ export default function MapPage() {
                     onClick={() => handleNodeClick(node.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs uppercase tracking-wide text-slate-200">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
                         {node.kind === "personnel" ? "Personnel" : "Agent"}
                       </div>
-                      <span className="text-lg">{node.kind === "personnel" ? "👤" : "🤖"}</span>
+                      <span className="text-sm">{node.kind === "personnel" ? "👤" : "🤖"}</span>
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-white">
+                    <div className="mt-1 text-sm font-semibold text-[var(--text)]">
                       {node.kind === "personnel" ? personnel?.name ?? "Unknown" : agent?.name ?? "Unknown"}
                     </div>
-                    <div className="text-xs text-slate-300">
+                    <div className="text-[11px] text-[var(--muted)]">
                       {node.kind === "personnel"
                         ? personnel?.title || personnel?.team || ""
                         : agent?.purpose || agent?.module || ""}
                     </div>
+                    {overlays.showStatus && node.kind === "personnel" && personnel ? (
+                      <div className="mt-1 text-[10px] uppercase text-[var(--muted)]">{personnel.capacity}</div>
+                    ) : null}
+                    {overlays.showStatus && node.kind === "agent" && agent ? (
+                      <div className="mt-1 text-[10px] uppercase text-[var(--muted)]">{agent.health}</div>
+                    ) : null}
                   </button>
                 );
               })}
               {emptyCanvas ? (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
-                  No nodes yet—add personnel or agents from the sidebar to begin.
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--muted)]">
+                  No nodes yet—add personnel or agents from the directory to begin.
                 </div>
               ) : null}
             </div>
           </div>
-          <div className="border-t border-white/5 px-6 py-3 text-xs text-slate-400">
-            Connections persist locally under <span className="text-slate-300">{storageKey}</span>.
+          <div className="border-t border-[var(--border)] px-5 py-3 text-xs text-[var(--muted)]">
+            Connections persist locally under <span className="text-[var(--text)]">{demoStorageKeys.map}</span>.
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Directory</div>
+              <div className="text-sm text-[var(--text)]">{mapState.personnel.length} Personnel · {mapState.agents.length} Agents</div>
+            </div>
+            <Badge label={activeTab === "personnel" ? "Personnel" : "Agents"} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              className={clsx(
+                "flex-1 rounded-md px-3 py-2 text-sm",
+                activeTab === "personnel" ? "bg-[var(--selection)] text-[var(--text)]" : "text-[var(--muted)] hover:bg-[var(--hover)]"
+              )}
+              onClick={() => setActiveTab("personnel")}
+              type="button"
+            >
+              Personnel
+            </button>
+            <button
+              className={clsx(
+                "flex-1 rounded-md px-3 py-2 text-sm",
+                activeTab === "agent" ? "bg-[var(--selection)] text-[var(--text)]" : "text-[var(--muted)] hover:bg-[var(--hover)]"
+              )}
+              onClick={() => setActiveTab("agent")}
+              type="button"
+            >
+              Agents
+            </button>
+          </div>
+          <Input
+            label={activeTab === "personnel" ? "Search personnel" : "Search agents"}
+            placeholder={activeTab === "personnel" ? "Filter by name" : "Filter by agent"}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+            <span>{activeTab === "personnel" ? "Personnel list" : "Agent list"}</span>
+            <Button variant="ghost" onClick={() => addItem(activeTab)}>
+              + Add
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {listItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-4 text-xs text-[var(--muted)]">
+                {activeTab === "personnel" ? "No personnel yet…" : "No agents yet…"}
+              </div>
+            ) : null}
+            {listItems.map((item) => {
+              const id = item.id;
+              const label = item.name;
+              const meta =
+                activeTab === "personnel"
+                  ? (item as PersonnelProfile).title || (item as PersonnelProfile).team
+                  : (item as AgentProfile).purpose || (item as AgentProfile).module;
+              const node = mapState.nodes.find((entry) => entry.kind === activeTab && entry.refId === id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    ensureNodeOnCanvas(activeTab, id);
+                    if (node) {
+                      setSelectedNodeId(node.id);
+                    }
+                  }}
+                  className={clsx(
+                    "w-full rounded-md border px-3 py-2 text-left text-sm",
+                    node && node.id === selectedNodeId
+                      ? "border-[var(--accent)] bg-[var(--selection)]"
+                      : "border-[var(--border)] bg-[var(--panel2)] hover:bg-[var(--hover)]"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-[var(--text)]">{label}</div>
+                    <span className="text-xs text-[var(--muted)]">{activeTab === "personnel" ? "👤" : "🤖"}</span>
+                  </div>
+                  {meta ? <div className="mt-1 text-xs text-[var(--muted)]">{meta}</div> : null}
+                </button>
+              );
+            })}
+          </div>
+          <div className="border-t border-[var(--border)] pt-3">
+            <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Detail</div>
+            {selectedPerson ? (
+              <div className="mt-3 space-y-3 text-sm">
+                <div>
+                  <div className="text-lg font-semibold text-[var(--text)]">{selectedPerson.name}</div>
+                  <div className="text-xs text-[var(--muted)]">{selectedPerson.title} · {selectedPerson.team}</div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge label={selectedPerson.status} />
+                  <Badge label={selectedPerson.capacity} className="bg-emerald-500/10 text-emerald-200" />
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Responsibilities</div>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--muted)]">
+                    {selectedPerson.responsibilities.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">RACI Tasks</div>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--muted)]">
+                    {selectedPerson.tasks.map((task) => (
+                      <li key={task.task}>
+                        <span className="font-semibold text-[var(--text)]">{task.role}</span> {task.task}
+                        {task.partner ? <span className="text-[var(--muted)]"> · {task.partner}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {selectedPerson.metrics.callsWeek !== undefined ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                    <div>Calls today: <span className="text-[var(--text)]">{selectedPerson.metrics.callsToday}</span></div>
+                    <div>Calls week: <span className="text-[var(--text)]">{selectedPerson.metrics.callsWeek}</span></div>
+                    <div>Sales today: <span className="text-[var(--text)]">{selectedPerson.metrics.salesToday}</span></div>
+                    <div>Sales week: <span className="text-[var(--text)]">{selectedPerson.metrics.salesWeek}</span></div>
+                    <div>Revenue week: <span className="text-[var(--text)]">${selectedPerson.metrics.revenueWeek?.toLocaleString()}</span></div>
+                  </div>
+                ) : null}
+                {selectedPerson.metrics.jobsScheduledToday !== undefined ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                    <div>Jobs scheduled: <span className="text-[var(--text)]">{selectedPerson.metrics.jobsScheduledToday}</span></div>
+                    <div>Jobs completed: <span className="text-[var(--text)]">{selectedPerson.metrics.jobsCompletedToday}</span></div>
+                    <div>Backlog: <span className="text-[var(--text)]">{selectedPerson.metrics.backlog}</span></div>
+                    <div>Overtime hrs: <span className="text-[var(--text)]">{selectedPerson.metrics.overtimeHoursWeek}</span></div>
+                  </div>
+                ) : null}
+                {selectedPerson.metrics.invoicesProcessedToday !== undefined ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                    <div>Invoices today: <span className="text-[var(--text)]">{selectedPerson.metrics.invoicesProcessedToday}</span></div>
+                    <div>AR calls week: <span className="text-[var(--text)]">{selectedPerson.metrics.arCallsWeek}</span></div>
+                    <div>Close tasks open: <span className="text-[var(--text)]">{selectedPerson.metrics.closeTasksOpen}</span></div>
+                    <div>Days to close: <span className="text-[var(--text)]">{selectedPerson.metrics.daysToCloseEstimate}</span></div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {selectedAgent ? (
+              <div className="mt-3 space-y-3 text-sm">
+                <div>
+                  <div className="text-lg font-semibold text-[var(--text)]">{selectedAgent.name}</div>
+                  <div className="text-xs text-[var(--muted)]">{selectedAgent.module} · {selectedAgent.ownerTeam}</div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge label={selectedAgent.health} />
+                  <Badge label={`${(selectedAgent.successRate * 100).toFixed(1)}% success`} className="bg-sky-500/10 text-sky-200" />
+                </div>
+                <div className="text-xs text-[var(--muted)]">{selectedAgent.purpose}</div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Inputs</div>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--muted)]">
+                    {selectedAgent.inputs.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Outputs</div>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--muted)]">
+                    {selectedAgent.outputs.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                  <div>Runs today: <span className="text-[var(--text)]">{selectedAgent.runsToday}</span></div>
+                  <div>Runs week: <span className="text-[var(--text)]">{selectedAgent.runsWeek}</span></div>
+                  <div>Latency: <span className="text-[var(--text)]">{selectedAgent.avgLatencyMs}ms</span></div>
+                  <div>Error rate: <span className="text-[var(--text)]">{selectedAgent.errorRate.toFixed(2)}%</span></div>
+                  <div>Last run: <span className="text-[var(--text)]">{new Date(selectedAgent.lastRunAt).toLocaleString()}</span></div>
+                </div>
+              </div>
+            ) : null}
+            {!selectedPerson && !selectedAgent ? (
+              <div className="mt-2 text-xs text-[var(--muted)]">Select a node to view detail.</div>
+            ) : null}
+            {selectedNode && connectedNodeIds.length > 0 ? (
+              <div className="mt-3 text-xs text-[var(--muted)]">
+                Connected nodes: <span className="text-[var(--text)]">{connectedNodeIds.length}</span>
+              </div>
+            ) : null}
           </div>
         </Card>
       </div>
 
       {toast ? (
-        <div className="fixed bottom-6 right-6 rounded-lg border border-white/10 bg-ink-800 px-4 py-2 text-sm text-slate-100 shadow-lg">
+        <div className="fixed bottom-6 right-6 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm text-[var(--text)] shadow-lg">
           {toast.message}
         </div>
       ) : null}

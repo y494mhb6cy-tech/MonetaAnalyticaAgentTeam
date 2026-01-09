@@ -5,20 +5,21 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const items = [
-  { href: "/map", label: "Map" },
-  { href: "/builder/tasks", label: "Builder" },
-  { href: "/settings", label: "Settings" }
+  { href: "/map", label: "Map", icon: "🗺️" },
+  { href: "/personnel", label: "Personnel", icon: "👥" },
+  { href: "/agents", label: "Agents", icon: "🤖" },
+  { href: "/builder/tasks", label: "Builder", icon: "🧩" },
+  { href: "/settings", label: "Settings", icon: "⚙️" }
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-64 bg-ink-800 border-r border-white/5 p-6 flex flex-col gap-8">
-      <div>
-        <div className="text-xl font-semibold tracking-wide">Moneta Analytica OS</div>
-        <div className="text-xs text-slate-400 mt-1">Operating System</div>
+    <aside className="flex w-20 flex-col items-center border-r border-[var(--border)] bg-[var(--panel)] py-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)] text-xs font-semibold text-[var(--bg)]">
+        MA
       </div>
-      <nav className="flex flex-col gap-2">
+      <nav className="mt-6 flex flex-1 flex-col items-center gap-3">
         {items.map((item) => {
           const active = item.href === "/builder/tasks"
             ? pathname.startsWith("/builder")
@@ -28,18 +29,19 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={clsx(
-                "px-3 py-2 rounded-lg text-sm",
-                active ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
+                "flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px]",
+                active
+                  ? "bg-[var(--selection)] text-[var(--text)]"
+                  : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
               )}
             >
-              {item.label}
+              <span className="text-base">{item.icon}</span>
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
-      <div className="mt-auto text-xs text-slate-500">
-        Profit · Process · Objectivity
-      </div>
+      <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">OS</div>
     </aside>
   );
 }

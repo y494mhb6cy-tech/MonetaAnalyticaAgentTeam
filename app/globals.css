@@ -4,16 +4,44 @@
 
 :root {
   color-scheme: dark;
+  --bg: #0f1116;
+  --panel: #141820;
+  --panel2: #1b202b;
+  --border: rgba(148, 163, 184, 0.18);
+  --text: #e8edf6;
+  --muted: #9aa4b2;
+  --accent: #9ad7ff;
+  --selection: rgba(148, 163, 184, 0.2);
+  --hover: rgba(148, 163, 184, 0.12);
+}
+
+.theme-deep {
+  --bg: #0b0f14;
+  --panel: #0f141c;
+  --panel2: #131a25;
+  --border: rgba(116, 156, 201, 0.2);
+  --text: #f2f6ff;
+  --muted: #94a3b8;
+  --accent: #9ad7ff;
+  --selection: rgba(154, 215, 255, 0.24);
+  --hover: rgba(154, 215, 255, 0.14);
 }
 
 body {
-  @apply bg-ink-900 text-slate-100 font-sans;
+  @apply font-sans;
+  background: var(--bg);
+  color: var(--text);
 }
 
 ::selection {
-  background: rgba(154, 215, 255, 0.2);
+  background: var(--selection);
 }
 
 a {
-  @apply text-accent-500 hover:text-white transition;
+  @apply transition;
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--text);
 }

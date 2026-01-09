@@ -17,6 +17,7 @@ export function useLocalStorageBoolean(key: string, defaultValue = false) {
   const update = (next: boolean) => {
     setValue(next);
     window.localStorage.setItem(key, String(next));
+    window.dispatchEvent(new Event("maos:theme"));
   };
 
   return [value, update] as const;
