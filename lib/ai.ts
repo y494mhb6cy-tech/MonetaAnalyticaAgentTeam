@@ -20,7 +20,7 @@ export async function runTaskWithProvider(task: TaskRabbit, inputs: RunInput[], 
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a precise analyst producing structured JSON for Moneta Analytica." },
+        { role: "system", content: "You are a precise analyst producing structured JSON for MAOS." },
         { role: "user", content: prompt }
       ],
       temperature: 0.2

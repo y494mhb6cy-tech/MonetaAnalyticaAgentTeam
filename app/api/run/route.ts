@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const estimatedCostBand = estimateCostBand(inputChars);
 
     let output: StructuredOutput | null = null;
-    let runName = "Moneta Analytica OS Output";
+    let runName = "MAOS Output";
 
     if (body.taskId) {
       const task = store.tasks.find((item) => item.id === body.taskId);
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     };
 
     const [docxBuffer, pdfBuffer] = await Promise.all([buildDocx(output), buildPdf(output)]);
-    const baseName = `Moneta Analytica OS — ${runName} — ${new Date().toISOString().slice(0, 10)}`;
+    const baseName = `MAOS — ${runName} — ${new Date().toISOString().slice(0, 10)}`;
 
     const artifacts = [
       {

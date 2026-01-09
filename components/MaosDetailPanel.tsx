@@ -61,7 +61,7 @@ export function PersonnelDetailPanel({
   onViewMap?: () => void;
   showViewOnMap?: boolean;
 }) {
-  const { tasks, addTask, updateTask } = useMaosStore();
+  const { tasks, addTask, updateTask, setAiPanelOpen, setAiContext } = useMaosStore();
   const [showTaskComposer, setShowTaskComposer] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
@@ -127,11 +127,23 @@ export function PersonnelDetailPanel({
           <div className="text-xl font-semibold text-[color:var(--text)]">{person.name}</div>
           <div className="text-sm text-[color:var(--muted)]">{person.title}</div>
         </div>
-        {onClose ? (
-          <Button variant="ghost" onClick={onClose} className="px-2 py-1">
-            Close
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setAiContext({ kind: "personnel", id: person.id });
+              setAiPanelOpen(true);
+            }}
+          >
+            AI Preview
           </Button>
-        ) : null}
+          {onClose ? (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Close
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge label={person.team} />
@@ -166,7 +178,7 @@ export function PersonnelDetailPanel({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-xs uppercase text-[color:var(--muted)]">Tasks</div>
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setShowTaskComposer((prev) => !prev)}>
+          <Button variant="ghost" size="sm" onClick={() => setShowTaskComposer((prev) => !prev)}>
             + New Task
           </Button>
         </div>
@@ -186,7 +198,7 @@ export function PersonnelDetailPanel({
             />
             <div className="flex justify-end">
               <Button
-                className="px-3 py-1 text-xs"
+                size="sm"
                 disabled={!draftTitle.trim()}
                 onClick={() => {
                   addTask({
@@ -274,7 +286,7 @@ export function AgentDetailPanel({
   onViewMap?: () => void;
   showViewOnMap?: boolean;
 }) {
-  const { tasks, addTask, updateTask } = useMaosStore();
+  const { tasks, addTask, updateTask, setAiPanelOpen, setAiContext } = useMaosStore();
   const [showTaskComposer, setShowTaskComposer] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
@@ -296,11 +308,23 @@ export function AgentDetailPanel({
           <div className="text-xl font-semibold text-[color:var(--text)]">{agent.name}</div>
           <div className="text-sm text-[color:var(--muted)]">{agent.purpose}</div>
         </div>
-        {onClose ? (
-          <Button variant="ghost" onClick={onClose} className="px-2 py-1">
-            Close
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setAiContext({ kind: "agent", id: agent.id });
+              setAiPanelOpen(true);
+            }}
+          >
+            AI Preview
           </Button>
-        ) : null}
+          {onClose ? (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Close
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge label={agent.module} />
@@ -351,7 +375,7 @@ export function AgentDetailPanel({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-xs uppercase text-[color:var(--muted)]">Tasks</div>
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => setShowTaskComposer((prev) => !prev)}>
+          <Button variant="ghost" size="sm" onClick={() => setShowTaskComposer((prev) => !prev)}>
             + New Task
           </Button>
         </div>
@@ -371,7 +395,7 @@ export function AgentDetailPanel({
             />
             <div className="flex justify-end">
               <Button
-                className="px-3 py-1 text-xs"
+                size="sm"
                 disabled={!draftTitle.trim()}
                 onClick={() => {
                   addTask({

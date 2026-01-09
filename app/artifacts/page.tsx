@@ -54,7 +54,7 @@ export default function ArtifactsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Artifacts"
-        subtitle="Review and download Moneta Analytica OS outputs across tasks and chains."
+        subtitle="Review and download MAOS (Moneta Analytica Agent Team) outputs across tasks and chains."
       />
 
       <Card>
