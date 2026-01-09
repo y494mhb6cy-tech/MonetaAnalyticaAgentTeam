@@ -54,6 +54,8 @@ interface OrgMapCanvasProps {
   onSelectPerson: (person: OrgPerson | null) => void;
   onSelectDepartment: (dept: OrgDepartment | null) => void;
   onHoverPerson: (person: OrgPerson | null, x: number, y: number) => void;
+  overlayMode?: "none" | "tasks" | "agents";
+  labelMode?: "off" | "keyOnly" | "all";
 }
 
 // Deterministic hash for stable positioning

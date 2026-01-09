@@ -130,6 +130,9 @@ export function generateOrgMapData(peopleCount: number = 100, seed: number = 42)
         presence: pickPresence(personRand),
         leverageScore: Math.floor(personRand() * 100),
         avatarInitials: getInitials(name),
+        roleLevel: "IC", // Default to IC for generic org data
+        supervisorId: undefined,
+        directReportIds: [],
       });
 
       personIndex++;
