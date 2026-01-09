@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import { AgentDetailPanel, PersonnelDetailPanel } from "../../components/MaosDetailPanel";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
+import { SectionLayout } from "../../components/SectionLayout";
 import { Agent, MapNode, NodeKind, Personnel } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
 
@@ -261,23 +262,46 @@ function MapContent() {
 
   const emptyCanvas = mapState.nodes.length === 0;
 
+  const renderHoveredMetrics = () => {
+    if (hoveredPersonnel?.metrics.sales) {
+      return `Calls/week ${hoveredPersonnel.metrics.sales.callsWeek} · Sales/week ${hoveredPersonnel.metrics.sales.salesWeek}`;
+    }
+    if (hoveredPersonnel?.metrics.ops) {
+      return `Jobs today ${hoveredPersonnel.metrics.ops.jobsCompletedToday} · Backlog ${hoveredPersonnel.metrics.ops.backlog}`;
+    }
+    if (hoveredPersonnel?.metrics.finance) {
+      return `Invoices today ${hoveredPersonnel.metrics.finance.invoicesProcessedToday} · Close tasks ${hoveredPersonnel.metrics.finance.closeTasksOpen}`;
+    }
+    return "Capacity insight available";
+  };
+
+  const detailPanel = selectedPersonnel ? (
+    <PersonnelDetailPanel person={selectedPersonnel} onClose={() => setSelectedNodeId(null)} />
+  ) : selectedAgent ? (
+    <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedNodeId(null)} />
+  ) : (
+    <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">Select a node to view details.</Card>
+  );
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Moneta Analytica OS Map"
-        subtitle="System topology connecting personnel and autonomous agents."
-        actions={
-          <>
+    <SectionLayout
+      sidebar={
+        <div className="space-y-6">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Map controls</div>
+            <div className="mt-2 text-lg font-semibold text-[color:var(--text)]">Topology tools</div>
+          </div>
+          <div className="space-y-3">
             <Button
               variant="ghost"
-              className={connectMode ? "border border-accent-500/60" : "border border-transparent"}
+              className={connectMode ? "border-[color:var(--accent)]" : ""}
               onClick={() => setConnectMode((prev) => !prev)}
             >
               {connectMode ? "Connect Mode On" : "Connect Mode"}
             </Button>
             <Button
               variant="ghost"
-              className={mapState.overlaysEnabled ? "border border-accent-500/60" : "border border-transparent"}
+              className={mapState.overlaysEnabled ? "border-[color:var(--accent)]" : ""}
               onClick={() =>
                 setMapState((prev) => ({
                   ...prev,
@@ -288,171 +312,174 @@ function MapContent() {
               {mapState.overlaysEnabled ? "Live overlays on" : "Live overlays"}
             </Button>
             <Button variant="ghost" onClick={resetPositions}>
-              Clear layout / Reset positions
+              Reset layout
             </Button>
-          </>
-        }
-      />
-
-      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-        <Badge label={`${personnel.length} Personnel`} />
-        <Badge label={`${agents.length} Agents`} />
-        <span>{connectMode ? "Connect mode: select two nodes" : "Drag nodes to arrange"}</span>
-      </div>
-
-      <Card className="relative overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-          <div>
-            <div className="text-sm text-slate-400">Canvas</div>
-            <div className="text-lg font-semibold text-white">Topology workspace</div>
           </div>
-          <div className="text-xs text-slate-400">Nodes are persisted in maos_map_state_v1.</div>
+          <div className="space-y-3 text-xs text-[color:var(--muted)]">
+            <Badge label={`${personnel.length} Personnel`} />
+            <Badge label={`${agents.length} Agents`} />
+            <div>{connectMode ? "Connect mode: select two nodes" : "Drag nodes to arrange"}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Legend</div>
+            <div className="mt-3 space-y-2 text-sm text-[color:var(--muted)]">
+              <div>👤 Personnel nodes</div>
+              <div>🤖 Agent nodes</div>
+            </div>
+          </div>
         </div>
-        <div ref={canvasRef} className="relative h-[620px] w-full overflow-auto bg-ink-900/60">
-          <div ref={canvasInnerRef} className="relative" style={{ width: canvasSize.width, height: canvasSize.height }}>
-            <svg className="absolute inset-0 h-full w-full">
-              {mapState.edges.map((edge) => {
-                const fromNode = nodeById[edge.fromNodeId];
-                const toNode = nodeById[edge.toNodeId];
-                if (!fromNode || !toNode) {
-                  return null;
-                }
-                const fromSize = nodeSizes[fromNode.kind];
-                const toSize = nodeSizes[toNode.kind];
-                const startX = fromNode.position.x + fromSize.width / 2;
-                const startY = fromNode.position.y + fromSize.height / 2;
-                const endX = toNode.position.x + toSize.width / 2;
-                const endY = toNode.position.y + toSize.height / 2;
+      }
+      detail={detailPanel}
+    >
+      <div className="space-y-6">
+        <PageHeader
+          title="Moneta Analytica OS Map"
+          subtitle="System topology connecting personnel and autonomous agents."
+        />
+
+        <Card className="relative overflow-hidden p-0">
+          <div className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Canvas</div>
+              <div className="text-lg font-semibold text-[color:var(--text)]">Topology workspace</div>
+            </div>
+            <div className="text-xs text-[color:var(--muted)]">Nodes are persisted in maos_map_state_v2.</div>
+          </div>
+          <div ref={canvasRef} className="relative h-[620px] w-full overflow-auto bg-[color:var(--panel2)]">
+            <div ref={canvasInnerRef} className="relative" style={{ width: canvasSize.width, height: canvasSize.height }}>
+              <svg className="absolute inset-0 h-full w-full">
+                {mapState.edges.map((edge) => {
+                  const fromNode = nodeById[edge.fromNodeId];
+                  const toNode = nodeById[edge.toNodeId];
+                  if (!fromNode || !toNode) {
+                    return null;
+                  }
+                  const fromSize = nodeSizes[fromNode.kind];
+                  const toSize = nodeSizes[toNode.kind];
+                  const startX = fromNode.position.x + fromSize.width / 2;
+                  const startY = fromNode.position.y + fromSize.height / 2;
+                  const endX = toNode.position.x + toSize.width / 2;
+                  const endY = toNode.position.y + toSize.height / 2;
+                  return (
+                    <line
+                      key={edge.id}
+                      x1={startX}
+                      y1={startY}
+                      x2={endX}
+                      y2={endY}
+                      stroke="rgba(124, 196, 255, 0.55)"
+                      strokeWidth={2}
+                    />
+                  );
+                })}
+              </svg>
+              {mapState.nodes.map((node) => {
+                const size = nodeSizes[node.kind];
+                const isSelectedForConnect = connectMode && connectFromId === node.id;
+                const personnelData = node.kind === "personnel" ? personnelById[node.refId] : null;
+                const agentData = node.kind === "agent" ? agentsById[node.refId] : null;
+                const isHighlighted = highlightedNodeId === node.id;
                 return (
-                  <line
-                    key={edge.id}
-                    x1={startX}
-                    y1={startY}
-                    x2={endX}
-                    y2={endY}
-                    stroke="rgba(56, 189, 248, 0.6)"
-                    strokeWidth={2}
-                  />
+                  <button
+                    key={node.id}
+                    type="button"
+                    className={`absolute rounded-xl border px-4 py-3 text-left shadow-lg transition ${
+                      node.kind === "personnel"
+                        ? "border-emerald-400/40 bg-emerald-500/10"
+                        : "border-sky-400/40 bg-sky-500/10"
+                    } ${isSelectedForConnect ? "ring-2 ring-[color:var(--accent)]" : ""} ${isHighlighted ? "ring-2 ring-[color:var(--accent)] animate-pulse" : ""}`}
+                    style={{ left: node.position.x, top: node.position.y, width: size.width, height: size.height }}
+                    onPointerDown={(event) => {
+                      if (event.button !== 0) {
+                        return;
+                      }
+                      const bounds = canvasInnerRef.current?.getBoundingClientRect();
+                      if (!bounds) {
+                        return;
+                      }
+                      dragState.current = {
+                        id: node.id,
+                        offsetX: event.clientX - bounds.left - node.position.x,
+                        offsetY: event.clientY - bounds.top - node.position.y,
+                        didMove: false
+                      };
+                    }}
+                    onMouseEnter={() => setHoveredNodeId(node.id)}
+                    onMouseLeave={() => setHoveredNodeId(null)}
+                    onClick={() => handleNodeClick(node.id)}
+                  >
+                    {mapState.overlaysEnabled ? (
+                      <span className="absolute -top-3 right-3 rounded-full border border-[color:var(--border)] bg-[var(--panel)] px-2 py-0.5 text-[10px] text-[color:var(--text)]">
+                        {node.kind === "personnel" ? "On call" : "Running"}
+                      </span>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                        {node.kind === "personnel" ? "Personnel" : "Agent"}
+                      </div>
+                      <span className="text-lg">{node.kind === "personnel" ? "👤" : "🤖"}</span>
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-[color:var(--text)]">
+                      {node.kind === "personnel" ? personnelData?.name ?? "Unknown" : agentData?.name ?? "Unknown"}
+                    </div>
+                    <div className="text-xs text-[color:var(--muted)]">
+                      {node.kind === "personnel"
+                        ? personnelData?.title || personnelData?.team || ""
+                        : agentData?.purpose || agentData?.module || ""}
+                    </div>
+                  </button>
                 );
               })}
-            </svg>
-            {mapState.nodes.map((node) => {
-              const size = nodeSizes[node.kind];
-              const isSelectedForConnect = connectMode && connectFromId === node.id;
-              const personnelData = node.kind === "personnel" ? personnelById[node.refId] : null;
-              const agentData = node.kind === "agent" ? agentsById[node.refId] : null;
-              const isHighlighted = highlightedNodeId === node.id;
-              return (
-                <button
-                  key={node.id}
-                  type="button"
-                  className={`absolute rounded-2xl border px-4 py-3 text-left shadow-card transition ${
-                    node.kind === "personnel"
-                      ? "border-emerald-400/40 bg-emerald-500/10"
-                      : "border-sky-400/40 bg-sky-500/10"
-                  } ${isSelectedForConnect ? "ring-2 ring-accent-500" : ""} ${isHighlighted ? "ring-2 ring-accent-400 animate-pulse" : ""}`}
-                  style={{ left: node.position.x, top: node.position.y, width: size.width, height: size.height }}
-                  onPointerDown={(event) => {
-                    if (event.button !== 0) {
-                      return;
-                    }
-                    const bounds = canvasInnerRef.current?.getBoundingClientRect();
-                    if (!bounds) {
-                      return;
-                    }
-                    dragState.current = {
-                      id: node.id,
-                      offsetX: event.clientX - bounds.left - node.position.x,
-                      offsetY: event.clientY - bounds.top - node.position.y,
-                      didMove: false
-                    };
+              {hoveredNode && (hoveredPersonnel || hoveredAgent) ? (
+                <div
+                  className="absolute z-20 w-64 rounded-xl border border-[color:var(--border)] bg-[var(--panel)] p-4 text-xs text-[color:var(--text)] shadow-xl pointer-events-none"
+                  style={{
+                    left: clamp(hoveredNode.position.x + nodeSizes[hoveredNode.kind].width + 16, 16, canvasSize.width - 280),
+                    top: clamp(hoveredNode.position.y, 16, canvasSize.height - 200)
                   }}
-                  onMouseEnter={() => setHoveredNodeId(node.id)}
-                  onMouseLeave={() => setHoveredNodeId(null)}
-                  onClick={() => handleNodeClick(node.id)}
                 >
-                  {mapState.overlaysEnabled ? (
-                    <span className="absolute -top-3 right-3 rounded-full border border-white/10 bg-ink-900/90 px-2 py-0.5 text-[10px] text-slate-200">
-                      {node.kind === "personnel" ? "On call" : "Running"}
-                    </span>
-                  ) : null}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs uppercase tracking-wide text-slate-200">
-                      {node.kind === "personnel" ? "Personnel" : "Agent"}
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-[color:var(--text)]">
+                      {hoveredPersonnel?.name ?? hoveredAgent?.name}
                     </div>
-                    <span className="text-lg">{node.kind === "personnel" ? "👤" : "🤖"}</span>
+                    <span className="rounded-full border border-[color:var(--border)] bg-[var(--panel2)] px-2 py-0.5 text-[10px] uppercase text-[color:var(--muted)]">
+                      {hoveredNode.kind}
+                    </span>
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-white">
-                    {node.kind === "personnel" ? personnelData?.name ?? "Unknown" : agentData?.name ?? "Unknown"}
+                  <div className="mt-2 space-y-1 text-[color:var(--muted)]">
+                    {hoveredPersonnel ? (
+                      <>
+                        <div>{hoveredPersonnel.team} · {hoveredPersonnel.status}</div>
+                        <div>Capacity {hoveredPersonnel.capacity}%</div>
+                        <div className="text-[color:var(--muted)]">{renderHoveredMetrics()}</div>
+                      </>
+                    ) : null}
+                    {hoveredAgent ? (
+                      <>
+                        <div>{hoveredAgent.module} · {hoveredAgent.status}</div>
+                        <div>Utilization {hoveredAgent.utilization}%</div>
+                        <div className="text-[color:var(--muted)]">Runs/week {hoveredAgent.metrics.runsWeek} · Success {hoveredAgent.metrics.successRate}%</div>
+                      </>
+                    ) : null}
                   </div>
-                  <div className="text-xs text-slate-300">
-                    {node.kind === "personnel"
-                      ? personnelData?.title || personnelData?.team || ""
-                      : agentData?.purpose || agentData?.module || ""}
-                  </div>
-                </button>
-              );
-            })}
-            {hoveredNode && (hoveredPersonnel || hoveredAgent) ? (
-              <div
-                className="absolute z-20 w-64 rounded-xl border border-white/10 bg-ink-900/95 p-4 text-xs text-slate-200 shadow-xl pointer-events-none"
-                style={{
-                  left: clamp(hoveredNode.position.x + nodeSizes[hoveredNode.kind].width + 16, 16, canvasSize.width - 280),
-                  top: clamp(hoveredNode.position.y, 16, canvasSize.height - 200)
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-white">
-                    {hoveredPersonnel?.name ?? hoveredAgent?.name}
-                  </div>
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase text-slate-200">
-                    {hoveredNode.kind}
-                  </span>
                 </div>
-                <div className="mt-2 space-y-1 text-slate-300">
-                  {hoveredPersonnel ? (
-                    <>
-                      <div>{hoveredPersonnel.team} · {hoveredPersonnel.status}</div>
-                      <div>Capacity {hoveredPersonnel.capacity}%</div>
-                      <div className="text-slate-400">Calls/week {hoveredPersonnel.metrics.callsWeek} · Sales/week {hoveredPersonnel.metrics.salesWeek}</div>
-                    </>
-                  ) : null}
-                  {hoveredAgent ? (
-                    <>
-                      <div>{hoveredAgent.module} · {hoveredAgent.status}</div>
-                      <div>Utilization {hoveredAgent.utilization}%</div>
-                      <div className="text-slate-400">Runs/week {hoveredAgent.metrics.runsWeek} · Success {hoveredAgent.metrics.successRate}%</div>
-                    </>
-                  ) : null}
+              ) : null}
+              {emptyCanvas ? (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-[color:var(--muted)]">
+                  No nodes yet—add personnel or agents to begin.
                 </div>
-              </div>
-            ) : null}
-            {emptyCanvas ? (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
-                No nodes yet—add personnel or agents to begin.
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
-      {selectedPersonnel ? (
-        <div className="fixed right-8 top-28 w-[360px] max-w-[90vw]">
-          <PersonnelDetailPanel person={selectedPersonnel} onClose={() => setSelectedNodeId(null)} />
-        </div>
-      ) : null}
-      {selectedAgent ? (
-        <div className="fixed right-8 top-28 w-[360px] max-w-[90vw]">
-          <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedNodeId(null)} />
-        </div>
-      ) : null}
-
-      {toast ? (
-        <div className="fixed bottom-6 right-6 rounded-lg border border-white/10 bg-ink-800 px-4 py-2 text-sm text-slate-100 shadow-lg">
-          {toast.message}
-        </div>
-      ) : null}
-    </div>
+        {toast ? (
+          <div className="fixed bottom-6 right-6 rounded-lg border border-[color:var(--border)] bg-[var(--panel)] px-4 py-2 text-sm text-[color:var(--text)] shadow-lg">
+            {toast.message}
+          </div>
+        ) : null}
+      </div>
+    </SectionLayout>
   );
 }
 

@@ -1,16 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PersonnelDetailPanel } from "../../components/MaosDetailPanel";
 import { Badge, Button, Card, Input, PageHeader, Select } from "../../components/ui";
+import { SectionLayout } from "../../components/SectionLayout";
 import { Personnel, PersonnelStatus } from "../../lib/maos-types";
 import { useMaosStore } from "../../lib/maos-store";
 
 const statusOptions: PersonnelStatus[] = ["Available", "On Call", "Offline"];
 
-export default function PersonnelPage() {
+function PersonnelContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { personnel, addPersonnel } = useMaosStore();
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
@@ -37,6 +39,19 @@ export default function PersonnelPage() {
 
   const selected = selectedId ? personnel.find((person) => person.id === selectedId) ?? null : null;
 
+  useEffect(() => {
+    const selectedParam = searchParams.get("select");
+    if (selectedParam) {
+      setSelectedId(selectedParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedId && !personnel.find((person) => person.id === selectedId)) {
+      setSelectedId(personnel[0]?.id ?? null);
+    }
+  }, [personnel, selectedId]);
+
   const handleAdd = () => {
     const next = addPersonnel();
     setSelectedId(next.id);
@@ -46,18 +61,39 @@ export default function PersonnelPage() {
     router.push(`/map?focus=personnel:${person.id}`);
   };
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Personnel"
-        subtitle="Human operators running Moneta Analytica OS."
-        actions={
-          <Button onClick={handleAdd}>Add new</Button>
-        }
-      />
+  const renderMetric = (person: Personnel) => {
+    if (person.metrics.sales) {
+      return [
+        { label: "Calls today", value: person.metrics.sales.callsToday },
+        { label: "Sales week", value: person.metrics.sales.salesWeek },
+        { label: "Revenue week", value: `$${person.metrics.sales.revenueWeek.toLocaleString()}` }
+      ];
+    }
+    if (person.metrics.ops) {
+      return [
+        { label: "Jobs today", value: person.metrics.ops.jobsCompletedToday },
+        { label: "Backlog", value: person.metrics.ops.backlog },
+        { label: "Overtime hrs", value: person.metrics.ops.overtimeHoursWeek }
+      ];
+    }
+    if (person.metrics.finance) {
+      return [
+        { label: "Invoices today", value: person.metrics.finance.invoicesProcessedToday },
+        { label: "Close tasks", value: person.metrics.finance.closeTasksOpen },
+        { label: "Days to close", value: person.metrics.finance.daysToCloseEstimate }
+      ];
+    }
+    return [{ label: "Capacity", value: `${person.capacity}%` }];
+  };
 
-      <Card className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
+  return (
+    <SectionLayout
+      sidebar={
+        <div className="space-y-6">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Personnel</div>
+            <div className="mt-2 text-lg font-semibold text-[color:var(--text)]">Directory filters</div>
+          </div>
           <Input label="Search" placeholder="Search by name or title" value={search} onChange={(event) => setSearch(event.target.value)} />
           <Select label="Team" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
             <option value="all">All teams</option>
@@ -75,96 +111,123 @@ export default function PersonnelPage() {
               </option>
             ))}
           </Select>
-          <Input
-            label="Capacity min"
-            type="number"
-            min={0}
-            max={100}
-            value={capacityMin}
-            onChange={(event) => setCapacityMin(Number(event.target.value))}
-          />
-          <Input
-            label="Capacity max"
-            type="number"
-            min={0}
-            max={100}
-            value={capacityMax}
-            onChange={(event) => setCapacityMax(Number(event.target.value))}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Capacity min"
+              type="number"
+              min={0}
+              max={100}
+              value={capacityMin}
+              onChange={(event) => setCapacityMin(Number(event.target.value))}
+            />
+            <Input
+              label="Capacity max"
+              type="number"
+              min={0}
+              max={100}
+              value={capacityMax}
+              onChange={(event) => setCapacityMax(Number(event.target.value))}
+            />
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">Teams</div>
+            <div className="mt-3 space-y-2 text-sm text-[color:var(--muted)]">
+              {teams.map((team) => (
+                <button
+                  key={team}
+                  type="button"
+                  className={teamFilter === team ? "text-[color:var(--text)]" : "hover:text-[color:var(--text)]"}
+                  onClick={() => setTeamFilter(team)}
+                >
+                  {team}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </Card>
+      }
+      detail={
+        selected ? (
+          <PersonnelDetailPanel person={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
+        ) : (
+          <Card className="flex items-center justify-center text-sm text-[color:var(--muted)]">
+            Select a person to view details.
+          </Card>
+        )
+      }
+    >
+      <div className="space-y-6">
+        <PageHeader
+          title="Personnel"
+          subtitle="Human operators running Moneta Analytica OS."
+          actions={<Button onClick={handleAdd}>Add new</Button>}
+        />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card className="p-0">
-          <div className="border-b border-white/5 px-6 py-4">
+          <div className="border-b border-[color:var(--border)] px-5 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-slate-400">Active Personnel</div>
-                <div className="text-lg font-semibold text-white">{filtered.length} profiles</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">Active personnel</div>
+                <div className="text-lg font-semibold text-[color:var(--text)]">{filtered.length} profiles</div>
               </div>
               <Badge label="Operations directory" />
             </div>
           </div>
-          <div className="divide-y divide-white/5">
-            {filtered.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                onClick={() => setSelectedId(person.id)}
-                className={`w-full px-6 py-4 text-left transition hover:bg-white/5 ${
-                  selectedId === person.id ? "bg-white/5" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-base font-semibold text-white">{person.name}</div>
-                    <div className="text-sm text-slate-300">{person.title}</div>
+          <div className="divide-y divide-[color:var(--border)]">
+            {filtered.map((person) => {
+              const metrics = renderMetric(person);
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => setSelectedId(person.id)}
+                  className={`w-full px-5 py-4 text-left transition hover:bg-[var(--hover)] ${
+                    selectedId === person.id ? "bg-[var(--hover)]" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-semibold text-[color:var(--text)]">{person.name}</div>
+                      <div className="text-xs text-[color:var(--muted)]">{person.title}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge label={person.team} />
+                      <Badge label={person.status} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge label={person.team} />
-                    <Badge label={person.status} />
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[color:var(--muted)] md:grid-cols-4">
+                    {metrics.map((item) => (
+                      <div key={item.label}>
+                        <div className="text-[color:var(--muted)]">{item.label}</div>
+                        <div className="text-sm text-[color:var(--text)]">{item.value}</div>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-end md:justify-start">
+                      <Button
+                        variant="ghost"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleViewMap(person);
+                        }}
+                      >
+                        View on map
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-4 text-xs text-slate-400 md:grid-cols-4">
-                  <div>
-                    <div className="text-slate-500">Calls (today)</div>
-                    <div className="text-sm text-white">{person.metrics.callsToday}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500">Calls (week)</div>
-                    <div className="text-sm text-white">{person.metrics.callsWeek}</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-500">Sales (week)</div>
-                    <div className="text-sm text-white">{person.metrics.salesWeek}</div>
-                  </div>
-                  <div className="flex items-center justify-end md:justify-start">
-                    <Button
-                      variant="ghost"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleViewMap(person);
-                      }}
-                    >
-                      View on map
-                    </Button>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </Card>
-
-        {selected ? (
-          <div className="lg:sticky lg:top-24">
-            <PersonnelDetailPanel person={selected} showViewOnMap onViewMap={() => handleViewMap(selected)} />
-          </div>
-        ) : (
-          <Card className="flex items-center justify-center text-sm text-slate-400">
-            Select a person to view details.
-          </Card>
-        )}
       </div>
-    </div>
+    </SectionLayout>
+  );
+}
+
+export default function PersonnelPage() {
+  return (
+    <Suspense fallback={<div className="text-[color:var(--muted)]">Loading personnel…</div>}>
+      <PersonnelContent />
+    </Suspense>
   );
 }
