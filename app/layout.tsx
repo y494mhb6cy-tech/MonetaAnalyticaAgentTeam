@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Sidebar } from "../components/Sidebar";
+import { MaosProvider } from "../lib/maos-store";
 
 export const metadata: Metadata = {
   title: "Moneta Analytica OS — Agents",
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <main className="flex-1 bg-ink-900">
             <div className="px-10 py-8">
-              {children}
+              <MaosProvider>{children}</MaosProvider>
             </div>
           </main>
         </div>
