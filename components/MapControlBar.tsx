@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
+import { ViewToggle } from "./ViewToggle";
 
-type ViewMode = "personnel" | "agent-architecture";
 type TimeWindow = "24h" | "7d";
 
 interface MapControlBarProps {
-  viewMode: ViewMode;
   showFlowTrace: boolean;
   timeWindow: TimeWindow;
   onToggleFlowTrace: () => void;
@@ -15,7 +13,6 @@ interface MapControlBarProps {
 }
 
 export default function MapControlBar({
-  viewMode,
   showFlowTrace,
   timeWindow,
   onToggleFlowTrace,
@@ -23,29 +20,8 @@ export default function MapControlBar({
 }: MapControlBarProps) {
   return (
     <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-      {/* View Toggle */}
-      <div className="flex items-center gap-1 rounded-lg bg-slate-900/90 p-1 backdrop-blur-sm border border-slate-700/50">
-        <Link
-          href="/map"
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            viewMode === "personnel"
-              ? "bg-indigo-600 text-white"
-              : "text-slate-400 hover:text-white hover:bg-slate-800"
-          }`}
-        >
-          Personnel
-        </Link>
-        <Link
-          href="/map/agents"
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            viewMode === "agent-architecture"
-              ? "bg-indigo-600 text-white"
-              : "text-slate-400 hover:text-white hover:bg-slate-800"
-          }`}
-        >
-          Agents
-        </Link>
-      </div>
+      {/* View Toggle - Unified component */}
+      <ViewToggle />
 
       {/* Overlay Controls */}
       <div className="flex items-center gap-2 rounded-lg bg-slate-900/90 p-2 backdrop-blur-sm border border-slate-700/50">

@@ -173,7 +173,6 @@ export default function PersonnelMapPage() {
 
         {/* Control bar (top-left) */}
         <MapControlBar
-          viewMode="personnel"
           showFlowTrace={showFlowTrace}
           timeWindow={timeWindow}
           onToggleFlowTrace={handleToggleFlowTrace}

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import { AgentArchitectureGraph } from "@/components/AgentArchitectureGraph";
 import {
   mockAgentDepartments,
@@ -28,6 +27,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
+import { ViewToggle } from "@/components/ViewToggle";
 import { BuildVersion } from "@/components/BuildVersion";
 
 export default function AgentArchitecturePage() {
@@ -101,22 +101,9 @@ export default function AgentArchitecturePage() {
 
   return (
     <div className="h-screen w-full bg-[var(--bg)] flex flex-col overflow-hidden">
-      {/* Top Navigation */}
-      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
-        <div className="flex items-center gap-1 rounded-lg bg-[var(--panel)] backdrop-blur-sm border border-[var(--border)] p-1">
-          <Link
-            href="/map"
-            className="px-3 py-1.5 text-xs font-medium rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--hover)] transition-colors"
-          >
-            Personnel
-          </Link>
-          <Link
-            href="/map/agents"
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--accent)] text-slate-900 transition-colors"
-          >
-            Agents
-          </Link>
-        </div>
+      {/* Top Navigation - Unified ViewToggle component */}
+      <div className="absolute top-4 left-4 z-30">
+        <ViewToggle />
       </div>
 
       {/* Main Layout */}
@@ -491,9 +478,13 @@ export default function AgentArchitecturePage() {
                 </div>
               )}
 
-              {/* AI Preview Button */}
-              <button className="w-full px-4 py-2 bg-gradient-to-r from-[var(--accent)] to-blue-500 text-slate-900 font-medium rounded-lg hover:opacity-90 transition-opacity">
-                AI Preview
+              {/* AI Preview Button - Coming soon */}
+              <button
+                disabled
+                title="AI Preview coming soon"
+                className="w-full px-4 py-2 bg-slate-700 text-slate-400 font-medium rounded-lg cursor-not-allowed opacity-60"
+              >
+                AI Preview (Coming soon)
               </button>
             </div>
           </div>
