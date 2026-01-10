@@ -263,7 +263,11 @@ function RiskAlert({ risk }: { risk: RiskItem }) {
         <div className="text-sm font-medium text-slate-200">{risk.title}</div>
         <div className="text-xs text-slate-500 mt-0.5">{risk.description}</div>
       </div>
-      <button className="text-xs text-[color:var(--accent)] hover:underline flex-shrink-0">
+      <button
+        disabled
+        title="Coming soon"
+        className="text-xs text-slate-500 flex-shrink-0 cursor-not-allowed opacity-60"
+      >
         {risk.actionLabel}
       </button>
     </div>
