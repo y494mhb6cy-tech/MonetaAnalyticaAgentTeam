@@ -52,7 +52,7 @@ function AgentsContent() {
   } | null>(null);
 
   // Sidebar toggle for mobile
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Generate dependencies
@@ -205,16 +205,28 @@ function AgentsContent() {
   }, [filteredAgents]);
 
   return (
-    <div className="h-screen w-full flex bg-slate-950 overflow-hidden">
-      {/* Left sidebar: Filters */}
+    <div className="h-[calc(100vh-52px)] w-full flex bg-slate-950 overflow-hidden">
+      {/* Left sidebar: Filters - collapsible on mobile */}
       <div
         className={`${
-          sidebarOpen ? "w-80" : "w-0"
+          sidebarOpen ? "w-full md:w-80 absolute md:relative z-40 h-full" : "w-0"
         } transition-all duration-200 border-r border-slate-800 bg-slate-900 overflow-hidden flex flex-col`}
       >
         <div className="flex-none px-5 py-4 border-b border-slate-800">
-          <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Agents</div>
-          <div className="text-lg font-semibold text-white">Operating Surface</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Agents</div>
+              <div className="text-lg font-semibold text-white">Operating Surface</div>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-2 text-slate-400 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
@@ -486,9 +498,9 @@ function AgentsContent() {
         </div>
       </div>
 
-      {/* Right details panel */}
+      {/* Right details panel - full screen on mobile */}
       {detailsOpen && selectedAgent && (
-        <div className="w-96 border-l border-slate-800 bg-slate-900 overflow-y-auto flex flex-col">
+        <div className="w-full md:w-96 absolute md:relative right-0 h-full z-50 border-l border-slate-800 bg-slate-900 overflow-y-auto flex flex-col">
           <div className="flex-none px-5 py-4 border-b border-slate-800 flex items-center justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Agent Details</div>

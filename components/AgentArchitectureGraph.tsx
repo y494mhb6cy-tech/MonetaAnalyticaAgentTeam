@@ -261,10 +261,10 @@ export function AgentArchitectureGraph({
         ctx.fillStyle = "#98a2b3";
 
         if (hoveredNode.type === "module") {
-          const module = hoveredNode.data as AgentModule;
-          ctx.fillText(`Status: ${module.status}`, 20, 50);
-          ctx.fillText(`Health: ${module.healthScore}%`, 20, 68);
-          ctx.fillText(`Agents: ${module.agentCount}`, 20, 86);
+          const modData = hoveredNode.data as AgentModule;
+          ctx.fillText(`Status: ${modData.status}`, 20, 50);
+          ctx.fillText(`Health: ${modData.healthScore}%`, 20, 68);
+          ctx.fillText(`Agents: ${modData.agentCount}`, 20, 86);
         } else {
           const agent = hoveredNode.data as AgentNode;
           ctx.fillText(`Status: ${agent.status}`, 20, 50);

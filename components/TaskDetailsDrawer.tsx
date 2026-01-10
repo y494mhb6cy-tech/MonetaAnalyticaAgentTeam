@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { X, Calendar, User, Users, TrendingUp, Clock, DollarSign, Phone, FileText, AlertCircle, Briefcase, Sparkles } from "lucide-react";
 import type { CompanyTask, CompanyTaskType } from "@/lib/maos-types";
 
@@ -57,6 +58,17 @@ export default function TaskDetailsDrawer({
   onClose,
   onRunAgent,
 }: TaskDetailsDrawerProps) {
+  // ESC key to close
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && task) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [task, onClose]);
+
   if (!task) return null;
 
   const TypeIcon = taskTypeIcons[task.type];

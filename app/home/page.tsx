@@ -330,10 +330,10 @@ export default function ExecutiveHomePage() {
   const criticalRisks = risks.filter(r => r.severity === "critical" || r.severity === "high");
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] overflow-auto">
+    <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden overflow-y-auto">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-[color:var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-white tracking-tight">
@@ -364,7 +364,7 @@ export default function ExecutiveHomePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8">
         {/* Top metrics row - answers key questions in <10s */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Capacity gauge */}

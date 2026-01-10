@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import type { OrgPerson, OrgDepartment, PersonnelPresence } from "../lib/maos-types";
 import {
@@ -74,6 +74,17 @@ export default function MapDetailsDrawer({
   onClose,
 }: MapDetailsDrawerProps) {
   const isOpen = person !== null || department !== null;
+
+  // ESC key to close
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

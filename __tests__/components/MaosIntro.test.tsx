@@ -1,7 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import MaosIntro from '@/components/MaosIntro';
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+}));
 
 describe('MaosIntro Modal', () => {
   const mockOnComplete = jest.fn();
@@ -29,8 +35,10 @@ describe('MaosIntro Modal', () => {
     // Close button should not be visible initially
     expect(screen.queryByLabelText(/close intro/i)).not.toBeInTheDocument();
 
-    // Advance timers by 2 seconds
-    jest.advanceTimersByTime(2000);
+    // Advance timers by 2 seconds and flush updates
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
 
     // Close button should now be visible
     expect(screen.getByLabelText(/close intro/i)).toBeInTheDocument();
@@ -40,7 +48,9 @@ describe('MaosIntro Modal', () => {
     render(<MaosIntro onComplete={mockOnComplete} />);
 
     // Show skip button
-    jest.advanceTimersByTime(2000);
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
 
     const closeButton = screen.getByLabelText(/close intro/i);
     fireEvent.click(closeButton);
@@ -52,8 +62,11 @@ describe('MaosIntro Modal', () => {
     render(<MaosIntro onComplete={mockOnComplete} />);
 
     // Show skip button
-    jest.advanceTimersByTime(2000);
+    await act(async () => {
+      jest.advanceTimersByTime(2100);
+    });
 
+    // The skip button has text "Skip intro →" - search for it
     const skipButton = screen.getByText(/skip intro/i);
     fireEvent.click(skipButton);
 
@@ -64,10 +77,18 @@ describe('MaosIntro Modal', () => {
     render(<MaosIntro onComplete={mockOnComplete} />);
 
     // Advance to stage 4 when CTA button appears
-    jest.advanceTimersByTime(7000);
+    await act(async () => {
+      jest.advanceTimersByTime(7000);
+    });
 
-    const enterButton = screen.getByRole('button', { name: /enter maos/i });
-    fireEvent.click(enterButton);
+    // Get the CTA button specifically (not the close button which also has "enter MAOS" in aria-label)
+    const buttons = screen.getAllByRole('button', { name: /enter maos/i });
+    // The CTA button is the one with the gradient class
+    const enterButton = buttons.find(btn =>
+      btn.className.includes('from-blue-500')
+    );
+    expect(enterButton).toBeTruthy();
+    fireEvent.click(enterButton!);
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
@@ -89,8 +110,13 @@ describe('MaosIntro Modal', () => {
   it('displays progress indicator dots', () => {
     render(<MaosIntro onComplete={mockOnComplete} />);
 
-    // Should have 5 progress dots
-    const progressContainer = screen.getByRole('dialog').querySelector('.absolute.bottom-8.left-1\\/2');
-    expect(progressContainer?.children).toHaveLength(5);
+    // Should have 5 progress dots - use a more robust selector
+    const dialog = screen.getByRole('dialog');
+    const progressDots = dialog.querySelectorAll('.rounded-full.transition-all');
+    // Filter to only the small 2x2 dots (progress indicators)
+    const smallDots = Array.from(progressDots).filter(el =>
+      el.classList.contains('w-2') && el.classList.contains('h-2')
+    );
+    expect(smallDots).toHaveLength(5);
   });
 });

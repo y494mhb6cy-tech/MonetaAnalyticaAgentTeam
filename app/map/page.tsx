@@ -12,7 +12,7 @@ import TaskFeed from "../../components/TaskFeed";
 import TaskDetailsDrawer from "../../components/TaskDetailsDrawer";
 import RevenueDragOverlay from "../../components/RevenueDragOverlay";
 import { BuildVersion } from "../../components/BuildVersion";
-import { Layers, Eye, Grid3x3, DollarSign, BarChart3 } from "lucide-react";
+import { Layers, Eye, Grid3x3, DollarSign, BarChart3, ChevronUp, ChevronDown, X } from "lucide-react";
 
 // Dynamic import for canvas component to avoid SSR issues
 const OrgMapCanvas = dynamic(() => import("../../components/OrgMapCanvas"), {
@@ -57,6 +57,10 @@ export default function PersonnelMapPage() {
     x: number;
     y: number;
   } | null>(null);
+
+  // Mobile panel states
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [mobileTasksOpen, setMobileTasksOpen] = useState(false);
 
   // Use sales company data (120 people across 5 teams)
   const orgData = useMemo<OrgMapData>(() => salesOrgData, []);
@@ -152,9 +156,9 @@ export default function PersonnelMapPage() {
   }, [selectedDepartment, selectedPerson]);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
-      {/* Map region (65-70% on desktop, full on mobile) */}
-      <div className="flex-1 min-h-0 lg:h-[65vh] relative bg-slate-950">
+    <div className="h-[calc(100vh-52px)] md:h-[calc(100vh-52px)] w-full flex flex-col bg-white overflow-hidden">
+      {/* Map region (full height on mobile, 65% on desktop) */}
+      <div className={`flex-1 min-h-0 relative bg-slate-950 ${mobileTasksOpen ? 'hidden md:block' : ''}`}>
         <div ref={containerRef} className="absolute inset-0">
           <OrgMapCanvas
             data={orgData}
@@ -179,8 +183,8 @@ export default function PersonnelMapPage() {
           onTimeWindowChange={handleTimeWindowChange}
         />
 
-        {/* Enhanced controls (top-left, below control bar) */}
-        <div className="absolute top-20 left-4 z-20 space-y-2">
+        {/* Enhanced controls (top-left, below control bar) - hidden on mobile by default */}
+        <div className={`absolute top-20 left-4 z-20 space-y-2 ${mobileControlsOpen ? 'block' : 'hidden md:block'}`}>
           {/* Revenue/Drag overlay toggle */}
           <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
             <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1">
@@ -350,22 +354,44 @@ export default function PersonnelMapPage() {
           onClose={handleCloseDrawer}
         />
 
-        {/* Org metrics summary (top-right, compact) */}
+        {/* Org metrics summary (top-right, compact - simplified on mobile) */}
         <div className="absolute top-4 right-4 z-20">
-          <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 px-4 py-3">
-            <div className="flex items-center gap-6">
+          <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 px-3 py-2 md:px-4 md:py-3">
+            <div className="flex items-center gap-4 md:gap-6">
               {/* Total people */}
               <div className="text-center">
-                <div className="text-lg font-bold text-white">
+                <div className="text-base md:text-lg font-bold text-white">
                   {orgData.people.length}
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                <div className="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-500">
                   People
                 </div>
               </div>
 
-              {/* Departments */}
+              {/* Active */}
               <div className="text-center">
+                <div className="text-base md:text-lg font-bold text-green-400">
+                  {orgData.people.filter((p) => p.presence === "active").length}
+                </div>
+                <div className="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-500">
+                  Active
+                </div>
+              </div>
+
+              {/* Blocked - only show if there are blocked people or on desktop */}
+              {(orgData.people.filter((p) => p.presence === "blocked").length > 0) && (
+                <div className="text-center">
+                  <div className="text-base md:text-lg font-bold text-red-400">
+                    {orgData.people.filter((p) => p.presence === "blocked").length}
+                  </div>
+                  <div className="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-500">
+                    Blocked
+                  </div>
+                </div>
+              )}
+
+              {/* Departments - hidden on mobile */}
+              <div className="hidden md:block text-center">
                 <div className="text-lg font-bold text-white">
                   {orgData.departments.length}
                 </div>
@@ -373,31 +399,11 @@ export default function PersonnelMapPage() {
                   Depts
                 </div>
               </div>
-
-              {/* Active */}
-              <div className="text-center">
-                <div className="text-lg font-bold text-green-400">
-                  {orgData.people.filter((p) => p.presence === "active").length}
-                </div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">
-                  Active
-                </div>
-              </div>
-
-              {/* Blocked */}
-              <div className="text-center">
-                <div className="text-lg font-bold text-red-400">
-                  {orgData.people.filter((p) => p.presence === "blocked").length}
-                </div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">
-                  Blocked
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Keyboard shortcuts hint (bottom-right) */}
+        {/* Keyboard shortcuts hint (bottom-right) - hidden on mobile */}
         <div className="absolute bottom-4 right-4 z-20 hidden md:block">
           <div className="text-[10px] text-slate-600 space-y-0.5">
             <div>
@@ -420,32 +426,58 @@ export default function PersonnelMapPage() {
             </div>
           </div>
         </div>
+
+        {/* Mobile controls toggle button */}
+        <button
+          onClick={() => setMobileControlsOpen(!mobileControlsOpen)}
+          className="absolute top-20 left-4 z-30 md:hidden rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2 text-slate-400"
+        >
+          <Layers className="w-5 h-5" />
+        </button>
+
+        {/* Mobile tasks toggle button */}
+        <button
+          onClick={() => setMobileTasksOpen(!mobileTasksOpen)}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 md:hidden rounded-full bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 px-4 py-2 text-sm text-slate-300 flex items-center gap-2"
+        >
+          <ChevronUp className="w-4 h-4" />
+          View Tasks ({tasks.length})
+        </button>
       </div>
 
-      {/* Task feed region (30-35% on desktop, collapsible on mobile) */}
-      <div className="h-[35vh] lg:h-[35vh] border-t border-gray-200 bg-white overflow-hidden">
+      {/* Task feed region (hidden on mobile unless toggled, always visible on desktop) */}
+      <div className={`${mobileTasksOpen ? 'h-full' : 'hidden'} md:block md:h-[35vh] border-t border-gray-200 bg-white overflow-hidden`}>
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex-none px-4 py-3 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900">Company Tasks</h2>
-                {(filterTeamId || filterPersonId) && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {filterPersonId && `Filtered by: ${selectedPerson?.name}`}
-                    {filterTeamId && !filterPersonId && `Filtered by: ${selectedDepartment?.name}`}
-                    {" · "}
-                    <button
-                      onClick={() => {
-                        setFilterTeamId(null);
-                        setFilterPersonId(null);
-                      }}
-                      className="text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Clear
-                    </button>
-                  </p>
-                )}
+              <div className="flex items-center gap-2">
+                {/* Mobile close button */}
+                <button
+                  onClick={() => setMobileTasksOpen(false)}
+                  className="md:hidden p-1 text-gray-500 hover:text-gray-700"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Company Tasks</h2>
+                  {(filterTeamId || filterPersonId) && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {filterPersonId && `Filtered by: ${selectedPerson?.name}`}
+                      {filterTeamId && !filterPersonId && `Filtered by: ${selectedDepartment?.name}`}
+                      {" · "}
+                      <button
+                        onClick={() => {
+                          setFilterTeamId(null);
+                          setFilterPersonId(null);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Clear
+                      </button>
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-gray-500">
                 {tasks.length} total tasks
