@@ -66,6 +66,19 @@ export default function SettingsPage() {
             </Button>
           </Card>
           <Card className="space-y-2">
+            <div className="text-lg font-semibold text-[color:var(--text)]">First-Time Experience</div>
+            <p className="text-sm text-[color:var(--muted)]">Reset the MAOS intro to show it again on next visit.</p>
+            <Button variant="ghost" onClick={() => {
+              localStorage.removeItem("maos_intro_seen");
+              window.location.href = "/home";
+            }}>
+              Reset intro
+            </Button>
+          </Card>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card className="space-y-2">
             <div className="text-lg font-semibold text-[color:var(--text)]">Template Management</div>
             <p className="text-sm text-[color:var(--muted)]">Upload and manage branded DOCX templates (placeholder for MVP).</p>
           </Card>

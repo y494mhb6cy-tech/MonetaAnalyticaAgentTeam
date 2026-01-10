@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Map, Users, Cpu, ListTodo, Blocks, Settings, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Map, Users, Cpu, ListTodo, Blocks, Settings, ClipboardList } from "lucide-react";
 
 const items = [
+  { href: "/home", label: "Home", Icon: LayoutDashboard },
   { href: "/map", label: "Map", Icon: Map },
   { href: "/company-tasks", label: "Company Tasks", Icon: ClipboardList },
   { href: "/personnel", label: "Personnel", Icon: Users },
