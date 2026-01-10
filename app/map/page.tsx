@@ -156,7 +156,7 @@ export default function PersonnelMapPage() {
   }, [selectedDepartment, selectedPerson]);
 
   return (
-    <div className="h-[calc(100vh-52px)] md:h-[calc(100vh-52px)] w-full flex flex-col bg-white overflow-hidden">
+    <div className="h-[calc(100vh-52px)] w-full flex flex-col bg-white overflow-hidden pb-16 md:pb-0">
       {/* Map region (full height on mobile, 65% on desktop) */}
       <div className={`flex-1 min-h-0 relative bg-slate-950 ${mobileTasksOpen ? 'hidden md:block' : ''}`}>
         <div ref={containerRef} className="absolute inset-0">

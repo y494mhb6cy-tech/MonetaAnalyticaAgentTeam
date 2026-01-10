@@ -126,6 +126,7 @@ export default function OrgMapCanvas({
 
   // Edge fade animation
   const [edgeOpacity, setEdgeOpacity] = useState(0);
+  const edgeOpacityRef = useRef(0);
 
   // Slow rotation for outer activity layer (people)
   const rotationRef = useRef<number>(0);
@@ -207,6 +208,11 @@ export default function OrgMapCanvas({
     return map;
   }, [nodePositions]);
 
+  // Keep ref in sync with state for animation closures
+  useEffect(() => {
+    edgeOpacityRef.current = edgeOpacity;
+  }, [edgeOpacity]);
+
   // Handle edge opacity animation
   useEffect(() => {
     if (showFlowTrace) {
@@ -220,7 +226,7 @@ export default function OrgMapCanvas({
       requestAnimationFrame(animate);
     } else {
       const start = Date.now();
-      const startOpacity = edgeOpacity;
+      const startOpacity = edgeOpacityRef.current;
       const animate = () => {
         const elapsed = Date.now() - start;
         const progress = Math.min(elapsed / 300, 1);

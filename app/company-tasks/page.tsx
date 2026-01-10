@@ -117,7 +117,7 @@ function CompanyTasksContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--bg)]">
+    <div className="h-[calc(100vh-52px)] md:h-[calc(100vh-52px)] flex flex-col bg-[var(--bg)] pb-16 md:pb-0">
       {/* Header */}
       <div className="flex-none border-b border-[color:var(--border)] bg-[var(--panel)] px-6 py-4">
         <h1 className="text-2xl font-bold text-[color:var(--text)]">Company Tasks</h1>
@@ -184,8 +184,8 @@ function CompanyTasksContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex-none border-b border-[color:var(--border)] bg-[var(--panel)] px-6 py-3">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex-none border-b border-[color:var(--border)] bg-[var(--panel)] px-4 md:px-6 py-3 overflow-x-auto">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap min-w-max md:min-w-0">
           <div className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
             <Filter className="w-4 h-4" />
             <span className="font-medium">Filters:</span>
@@ -195,7 +195,7 @@ function CompanyTasksContent() {
           <select
             value={filters.teamId}
             onChange={(e) => handleFilterChange("teamId", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">All Teams</option>
             {salesOrgData.departments.map((dept) => (
@@ -209,7 +209,7 @@ function CompanyTasksContent() {
           <select
             value={filters.personId}
             onChange={(e) => handleFilterChange("personId", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">All People</option>
             {availablePeople.map((person) => (
@@ -223,7 +223,7 @@ function CompanyTasksContent() {
           <select
             value={filters.type}
             onChange={(e) => handleFilterChange("type", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="All">All Types</option>
             <option value="Sales">Sales</option>
@@ -237,7 +237,7 @@ function CompanyTasksContent() {
           <select
             value={filters.revenueImpact}
             onChange={(e) => handleFilterChange("revenueImpact", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="All">All Revenue Impact</option>
             <option value="Revenue">Revenue-Producing</option>
@@ -248,7 +248,7 @@ function CompanyTasksContent() {
           <select
             value={filters.status}
             onChange={(e) => handleFilterChange("status", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="All">All Statuses</option>
             <option value="Planned">Planned</option>
@@ -261,7 +261,7 @@ function CompanyTasksContent() {
           <select
             value={filters.priority}
             onChange={(e) => handleFilterChange("priority", e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-[color:var(--border)] bg-[var(--panel2)] text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="All">All Priorities</option>
             <option value="P1">P1 - Critical</option>

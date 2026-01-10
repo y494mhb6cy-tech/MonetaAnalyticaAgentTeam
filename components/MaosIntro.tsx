@@ -90,7 +90,31 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
     };
   }, []);
 
-  // ESC key handler
+  // Show skip button after 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSkip(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-advance stages
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStage(1), 1000),   // Start metrics reveal
+      setTimeout(() => setStage(2), 3000),   // Show org insights
+      setTimeout(() => setStage(3), 5000),   // Show value prop
+      setTimeout(() => setStage(4), 7000),   // Final CTA
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const handleEnter = useCallback(() => {
+    // Return focus to previously focused element
+    previouslyFocusedElement.current?.focus();
+    onComplete();
+    router.push("/home");
+  }, [onComplete, router]);
+
+  // ESC key handler - must be after handleEnter definition
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -121,31 +145,7 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // Show skip button after 2 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSkip(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Auto-advance stages
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setStage(1), 1000),   // Start metrics reveal
-      setTimeout(() => setStage(2), 3000),   // Show org insights
-      setTimeout(() => setStage(3), 5000),   // Show value prop
-      setTimeout(() => setStage(4), 7000),   // Final CTA
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  const handleEnter = useCallback(() => {
-    // Return focus to previously focused element
-    previouslyFocusedElement.current?.focus();
-    onComplete();
-    router.push("/home");
-  }, [onComplete, router]);
+  }, [handleEnter]);
 
   return (
     <div
