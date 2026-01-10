@@ -27,16 +27,16 @@ const taskTypeLabels: Record<CompanyTaskType, string> = {
 };
 
 const statusColors = {
-  Planned: "bg-gray-100 text-gray-700 border-gray-300",
-  InProgress: "bg-blue-100 text-blue-700 border-blue-300",
-  Blocked: "bg-red-100 text-red-700 border-red-300",
-  Done: "bg-green-100 text-green-700 border-green-300",
+  Planned: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  InProgress: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  Blocked: "bg-red-500/20 text-red-400 border-red-500/30",
+  Done: "bg-green-500/20 text-green-400 border-green-500/30",
 };
 
 const priorityColors = {
-  P1: "bg-red-100 text-red-700 border-red-300",
-  P2: "bg-orange-100 text-orange-700 border-orange-300",
-  P3: "bg-gray-100 text-gray-700 border-gray-300",
+  P1: "bg-red-500/20 text-red-400 border-red-500/30",
+  P2: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  P3: "bg-slate-500/20 text-slate-400 border-slate-500/30",
 };
 
 function formatDate(dateString: string): string {
@@ -77,20 +77,21 @@ export default function TaskDetailsDrawer({
     <>
       {/* Backdrop for mobile */}
       <div
-        className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed top-0 right-0 h-full w-full lg:w-[480px] bg-white shadow-2xl z-50 overflow-y-auto">
+      <div className="fixed top-0 right-0 h-full w-full lg:w-[480px] bg-slate-900 shadow-2xl z-50 overflow-y-auto border-l border-slate-700/50">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-semibold text-gray-900">Task Details</h2>
+        <div className="sticky top-0 bg-slate-900 border-b border-slate-700/50 px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-lg font-semibold text-white">Task Details</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            aria-label="Close task details"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-slate-400 hover:text-white" />
           </button>
         </div>
 
@@ -99,18 +100,18 @@ export default function TaskDetailsDrawer({
           {/* Task type and title */}
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
                 <TypeIcon className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <div className="text-xs text-gray-500 mb-1">{taskTypeLabels[task.type]}</div>
-                <h3 className="text-base font-semibold text-gray-900">{task.title}</h3>
+                <div className="text-xs text-slate-500 mb-1">{taskTypeLabels[task.type]}</div>
+                <h3 className="text-base font-semibold text-white">{task.title}</h3>
               </div>
             </div>
           </div>
 
           {/* Status and Priority badges */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-3 py-1 text-xs font-medium border rounded-full ${statusColors[task.status]}`}>
               {task.status}
             </span>
@@ -118,7 +119,7 @@ export default function TaskDetailsDrawer({
               {task.priority}
             </span>
             {task.revenueImpact === "Revenue" && (
-              <span className="px-3 py-1 text-xs font-medium border rounded-full bg-green-100 text-green-700 border-green-300 inline-flex items-center gap-1">
+              <span className="px-3 py-1 text-xs font-medium border rounded-full bg-green-500/20 text-green-400 border-green-500/30 inline-flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
                 Revenue Impact
               </span>
@@ -126,39 +127,39 @@ export default function TaskDetailsDrawer({
           </div>
 
           {/* Key info */}
-          <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
             <div className="flex items-start gap-3">
-              <User className="w-4 h-4 text-gray-400 mt-0.5" />
+              <User className="w-4 h-4 text-slate-500 mt-0.5" />
               <div className="flex-1">
-                <div className="text-xs text-gray-500 mb-0.5">Owner</div>
-                <div className="text-sm font-medium text-gray-900">{task.ownerName}</div>
+                <div className="text-xs text-slate-500 mb-0.5">Owner</div>
+                <div className="text-sm font-medium text-white">{task.ownerName}</div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <Users className="w-4 h-4 text-gray-400 mt-0.5" />
+              <Users className="w-4 h-4 text-slate-500 mt-0.5" />
               <div className="flex-1">
-                <div className="text-xs text-gray-500 mb-0.5">Team</div>
-                <div className="text-sm font-medium text-gray-900">{task.teamName}</div>
+                <div className="text-xs text-slate-500 mb-0.5">Team</div>
+                <div className="text-sm font-medium text-white">{task.teamName}</div>
               </div>
             </div>
 
             {task.supervisorName && (
               <div className="flex items-start gap-3">
-                <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                <User className="w-4 h-4 text-slate-500 mt-0.5" />
                 <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-0.5">Supervisor</div>
-                  <div className="text-sm font-medium text-gray-900">{task.supervisorName}</div>
+                  <div className="text-xs text-slate-500 mb-0.5">Supervisor</div>
+                  <div className="text-sm font-medium text-white">{task.supervisorName}</div>
                 </div>
               </div>
             )}
 
             {task.dueDate && (
               <div className="flex items-start gap-3">
-                <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                <Calendar className="w-4 h-4 text-slate-500 mt-0.5" />
                 <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-0.5">Due Date</div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-xs text-slate-500 mb-0.5">Due Date</div>
+                  <div className="text-sm font-medium text-white">
                     {new Date(task.dueDate).toLocaleDateString(undefined, {
                       year: "numeric",
                       month: "long",
@@ -171,10 +172,10 @@ export default function TaskDetailsDrawer({
 
             {task.estimatedEffort && (
               <div className="flex items-start gap-3">
-                <Clock className="w-4 h-4 text-gray-400 mt-0.5" />
+                <Clock className="w-4 h-4 text-slate-500 mt-0.5" />
                 <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-0.5">Estimated Effort</div>
-                  <div className="text-sm font-medium text-gray-900">{task.estimatedEffort} hours</div>
+                  <div className="text-xs text-slate-500 mb-0.5">Estimated Effort</div>
+                  <div className="text-sm font-medium text-white">{task.estimatedEffort} hours</div>
                 </div>
               </div>
             )}
@@ -183,40 +184,40 @@ export default function TaskDetailsDrawer({
           {/* Task Metrics */}
           {task.metrics && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Metrics</h4>
+              <h4 className="text-sm font-semibold text-white mb-3">Metrics</h4>
               <div className="grid grid-cols-2 gap-3">
                 {task.metrics.callsMade !== undefined && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="text-xs text-blue-600 mb-1">Calls Made</div>
-                    <div className="text-lg font-semibold text-blue-900">{task.metrics.callsMade}</div>
+                  <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                    <div className="text-xs text-blue-400 mb-1">Calls Made</div>
+                    <div className="text-lg font-semibold text-white">{task.metrics.callsMade}</div>
                   </div>
                 )}
                 {task.metrics.ordersWritten !== undefined && (
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="text-xs text-green-600 mb-1">Orders Written</div>
-                    <div className="text-lg font-semibold text-green-900">{task.metrics.ordersWritten}</div>
+                  <div className="p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+                    <div className="text-xs text-green-400 mb-1">Orders Written</div>
+                    <div className="text-lg font-semibold text-white">{task.metrics.ordersWritten}</div>
                   </div>
                 )}
                 {task.metrics.salesAmount !== undefined && (
-                  <div className="p-3 bg-emerald-50 rounded-lg">
-                    <div className="text-xs text-emerald-600 mb-1">Sales Amount</div>
-                    <div className="text-lg font-semibold text-emerald-900">
+                  <div className="p-3 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                    <div className="text-xs text-emerald-400 mb-1">Sales Amount</div>
+                    <div className="text-lg font-semibold text-white">
                       ${task.metrics.salesAmount.toLocaleString()}
                     </div>
                   </div>
                 )}
                 {task.metrics.disputeValue !== undefined && (
-                  <div className="p-3 bg-orange-50 rounded-lg">
-                    <div className="text-xs text-orange-600 mb-1">Dispute Value</div>
-                    <div className="text-lg font-semibold text-orange-900">
+                  <div className="p-3 bg-orange-500/20 rounded-lg border border-orange-500/30">
+                    <div className="text-xs text-orange-400 mb-1">Dispute Value</div>
+                    <div className="text-lg font-semibold text-white">
                       ${task.metrics.disputeValue.toLocaleString()}
                     </div>
                   </div>
                 )}
                 {task.metrics.customerCount !== undefined && (
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <div className="text-xs text-purple-600 mb-1">Customers</div>
-                    <div className="text-lg font-semibold text-purple-900">{task.metrics.customerCount}</div>
+                  <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                    <div className="text-xs text-purple-400 mb-1">Customers</div>
+                    <div className="text-lg font-semibold text-white">{task.metrics.customerCount}</div>
                   </div>
                 )}
               </div>
@@ -226,7 +227,7 @@ export default function TaskDetailsDrawer({
           {/* Suggested Agents */}
           {task.agentSupportIds && task.agentSupportIds.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Suggested AI Agents</h4>
+              <h4 className="text-sm font-semibold text-white mb-3">Suggested AI Agents</h4>
               <div className="space-y-2">
                 {task.agentSupportIds.map((agentId) => {
                   const agentNames: Record<string, string> = {
@@ -248,25 +249,25 @@ export default function TaskDetailsDrawer({
                   return (
                     <div
                       key={agentId}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                      className="p-3 border border-slate-700/50 rounded-lg hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">
-                          <div className="w-8 h-8 rounded bg-purple-100 text-purple-600 flex items-center justify-center flex-none">
+                          <div className="w-8 h-8 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center flex-none">
                             <Sparkles className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 mb-1">
+                            <div className="text-sm font-medium text-white mb-1">
                               {agentNames[agentId] || agentId}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-slate-400">
                               {agentDescriptions[agentId] || "AI-powered task automation"}
                             </div>
                           </div>
                         </div>
                         <button
                           onClick={() => onRunAgent?.(agentId)}
-                          className="flex-none px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded border border-purple-200 transition-colors"
+                          className="flex-none px-3 py-1 text-xs font-medium text-purple-400 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 transition-colors"
                         >
                           Preview
                         </button>
@@ -280,14 +281,14 @@ export default function TaskDetailsDrawer({
 
           {/* Timeline */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Timeline</h4>
-            <div className="space-y-3 text-xs text-gray-600">
+            <h4 className="text-sm font-semibold text-white mb-3">Timeline</h4>
+            <div className="space-y-3 text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                 <span>Created {formatDate(task.createdAt)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                <div className="w-2 h-2 rounded-full bg-slate-500"></div>
                 <span>Updated {formatDate(task.updatedAt)}</span>
               </div>
             </div>
@@ -296,8 +297,8 @@ export default function TaskDetailsDrawer({
           {/* Description (if exists) */}
           {task.description && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Description</h4>
-              <p className="text-sm text-gray-600">{task.description}</p>
+              <h4 className="text-sm font-semibold text-white mb-2">Description</h4>
+              <p className="text-sm text-slate-400">{task.description}</p>
             </div>
           )}
         </div>
