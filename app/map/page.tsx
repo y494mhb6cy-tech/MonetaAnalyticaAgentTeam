@@ -10,8 +10,9 @@ import MapDetailsDrawer from "../../components/MapDetailsDrawer";
 import MapTooltip from "../../components/MapTooltip";
 import TaskFeed from "../../components/TaskFeed";
 import TaskDetailsDrawer from "../../components/TaskDetailsDrawer";
+import RevenueDragOverlay from "../../components/RevenueDragOverlay";
 import { BuildVersion } from "../../components/BuildVersion";
-import { Layers, Eye, Grid3x3 } from "lucide-react";
+import { Layers, Eye, Grid3x3, DollarSign, BarChart3 } from "lucide-react";
 
 // Dynamic import for canvas component to avoid SSR issues
 const OrgMapCanvas = dynamic(() => import("../../components/OrgMapCanvas"), {
@@ -39,6 +40,7 @@ export default function PersonnelMapPage() {
   const [overlayMode, setOverlayMode] = useState<MapOverlayMode>("tasks");
   const [density, setDensity] = useState<MapDensity>("comfortable");
   const [labelMode, setLabelMode] = useState<MapLabelMode>("keyOnly");
+  const [showRevenueOverlay, setShowRevenueOverlay] = useState(false);
 
   // Selection state
   const [selectedPerson, setSelectedPerson] = useState<OrgPerson | null>(null);
@@ -180,10 +182,29 @@ export default function PersonnelMapPage() {
 
         {/* Enhanced controls (top-left, below control bar) */}
         <div className="absolute top-20 left-4 z-20 space-y-2">
+          {/* Revenue/Drag overlay toggle */}
+          <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1">
+              <BarChart3 className="w-3 h-3" />
+              Revenue Analysis
+            </div>
+            <button
+              onClick={() => setShowRevenueOverlay(!showRevenueOverlay)}
+              className={`w-full px-3 py-2 text-xs rounded flex items-center justify-center gap-2 transition-colors ${
+                showRevenueOverlay
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              {showRevenueOverlay ? "Hide Overlay" : "Show Overlay"}
+            </button>
+          </div>
+
           {/* Overlay mode toggle */}
           <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
             <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1">
-              Overlay
+              Node Display
             </div>
             <div className="flex gap-1">
               <button
@@ -290,8 +311,29 @@ export default function PersonnelMapPage() {
           </div>
         </div>
 
+        {/* Revenue/Drag overlay panel */}
+        {showRevenueOverlay && (
+          <RevenueDragOverlay
+            tasks={tasks}
+            orgData={orgData}
+            selectedTeamId={filterTeamId}
+            onTeamSelect={(teamId) => {
+              setFilterTeamId(teamId);
+              if (teamId) {
+                const dept = orgData.departments.find(d => d.id === teamId);
+                if (dept) {
+                  setSelectedDepartment(dept);
+                  setSelectedPerson(null);
+                }
+              } else {
+                setSelectedDepartment(null);
+              }
+            }}
+          />
+        )}
+
         {/* Legend (bottom-left) */}
-        <MapLegend />
+        {!showRevenueOverlay && <MapLegend />}
 
         {/* Hover tooltip (desktop only) */}
         {hoveredPerson && !selectedPerson && (
