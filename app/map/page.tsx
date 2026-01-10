@@ -156,7 +156,7 @@ export default function PersonnelMapPage() {
   }, [selectedDepartment, selectedPerson]);
 
   return (
-    <div className="h-[calc(100vh-52px)] w-full flex flex-col bg-white overflow-hidden pb-16 md:pb-0">
+    <div className="h-[calc(100vh-52px)] w-full flex flex-col bg-slate-950 overflow-hidden pb-16 md:pb-0">
       {/* Map region (full height on mobile, 65% on desktop) */}
       <div className={`flex-1 min-h-0 relative bg-slate-950 ${mobileTasksOpen ? 'hidden md:block' : ''}`}>
         <div ref={containerRef} className="absolute inset-0">
@@ -446,23 +446,23 @@ export default function PersonnelMapPage() {
       </div>
 
       {/* Task feed region (hidden on mobile unless toggled, always visible on desktop) */}
-      <div className={`${mobileTasksOpen ? 'h-full' : 'hidden'} md:block md:h-[35vh] border-t border-gray-200 bg-white overflow-hidden`}>
+      <div className={`${mobileTasksOpen ? 'h-full' : 'hidden'} md:block md:h-[35vh] border-t border-slate-700/50 bg-slate-900 overflow-hidden`}>
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="flex-none px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex-none px-4 py-3 border-b border-slate-700/50 bg-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {/* Mobile close button */}
                 <button
                   onClick={() => setMobileTasksOpen(false)}
-                  className="md:hidden p-1 text-gray-500 hover:text-gray-700"
+                  className="md:hidden p-1 text-slate-400 hover:text-white"
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-900">Company Tasks</h2>
+                  <h2 className="text-sm font-semibold text-white">Company Tasks</h2>
                   {(filterTeamId || filterPersonId) && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       {filterPersonId && `Filtered by: ${selectedPerson?.name}`}
                       {filterTeamId && !filterPersonId && `Filtered by: ${selectedDepartment?.name}`}
                       {" · "}
@@ -471,7 +471,7 @@ export default function PersonnelMapPage() {
                           setFilterTeamId(null);
                           setFilterPersonId(null);
                         }}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-indigo-400 hover:text-indigo-300 font-medium"
                       >
                         Clear
                       </button>
@@ -479,7 +479,7 @@ export default function PersonnelMapPage() {
                   )}
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-slate-400">
                 {tasks.length} total tasks
               </div>
             </div>
