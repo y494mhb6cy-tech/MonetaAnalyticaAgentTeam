@@ -148,6 +148,18 @@ function AgentsContent() {
     }
   }, [selectedAgent, addRecentEntity]);
 
+  // ESC key to close details panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedAgentId) {
+        setSelectedAgentId(null);
+        setDetailsOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedAgentId]);
+
   // Handlers
   const handleSelectAgent = useCallback((agent: Agent | null) => {
     setSelectedAgentId(agent?.id ?? null);
@@ -205,7 +217,7 @@ function AgentsContent() {
   }, [filteredAgents]);
 
   return (
-    <div className="h-[calc(100vh-52px)] w-full flex bg-slate-950 overflow-hidden">
+    <div className="h-[calc(100vh-52px)] w-full flex bg-slate-950 overflow-hidden pb-16 md:pb-0">
       {/* Left sidebar: Filters - collapsible on mobile */}
       <div
         className={`${

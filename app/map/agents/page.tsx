@@ -100,7 +100,7 @@ export default function AgentArchitecturePage() {
   };
 
   return (
-    <div className="h-screen w-full bg-[var(--bg)] flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-52px)] md:h-[calc(100vh-52px)] w-full bg-[var(--bg)] flex flex-col overflow-hidden pb-16 md:pb-0">
       {/* Top Navigation - Unified ViewToggle component */}
       <div className="absolute top-4 left-4 z-30">
         <ViewToggle />
