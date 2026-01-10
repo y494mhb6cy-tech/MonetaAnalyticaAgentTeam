@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Zap,
   TrendingUp,
+  X,
 } from "lucide-react";
 
 interface MaosIntroProps {
@@ -62,6 +63,66 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
   const [stage, setStage] = useState(0);
   const [showSkip, setShowSkip] = useState(false);
 
+  // Refs for focus management
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
+
+  // Store previously focused element
+  useEffect(() => {
+    previouslyFocusedElement.current = document.activeElement as HTMLElement;
+
+    // Focus the close button when modal opens (after skip button appears)
+    const focusTimer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 2100);
+
+    return () => clearTimeout(focusTimer);
+  }, []);
+
+  // Prevent background scroll while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
+  // ESC key handler
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        handleEnter();
+      }
+
+      // Focus trap - Tab key cycling
+      if (event.key === "Tab" && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Show skip button after 2 seconds
   useEffect(() => {
     const timer = setTimeout(() => setShowSkip(true), 2000);
@@ -80,12 +141,33 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
   }, []);
 
   const handleEnter = useCallback(() => {
+    // Return focus to previously focused element
+    previouslyFocusedElement.current?.focus();
     onComplete();
     router.push("/home");
   }, [onComplete, router]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center overflow-hidden">
+    <div
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="maos-intro-title"
+      aria-describedby="maos-intro-description"
+      className="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center overflow-hidden"
+    >
+      {/* Close button (X) - top right, always visible after skip shows */}
+      {showSkip && (
+        <button
+          ref={closeButtonRef}
+          onClick={handleEnter}
+          className="absolute top-6 right-6 z-50 p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+          aria-label="Close intro and enter MAOS"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      )}
+
       {/* Animated background grid */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(124,196,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(124,196,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
@@ -120,10 +202,10 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
               <Activity className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight mb-4">
+          <h1 id="maos-intro-title" className="text-5xl md:text-6xl font-bold text-white tracking-tight mb-4">
             MAOS
           </h1>
-          <p className="text-xl text-slate-400">
+          <p id="maos-intro-description" className="text-xl text-slate-400">
             <Typewriter text="Your organization, operationalized." delay={60} />
           </p>
         </div>
