@@ -390,7 +390,7 @@ export default function AgentOperationalPanel({
           {connectedAgents.downstream.length > 0 && (
             <p className="mt-2">
               <strong className="text-white">{connectedAgents.downstream.length} other agents</strong>{" "}
-              depend on this agent's output.
+              depend on this agent&apos;s output.
             </p>
           )}
         </div>

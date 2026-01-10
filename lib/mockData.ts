@@ -1070,11 +1070,11 @@ people.slice(0, 30).forEach((person) => {
   const moduleIds = [...new Set(personTasks.filter((t) => t.moduleId).map((t) => t.moduleId!))];
 
   const linkedModules: LinkedModule[] = moduleIds.map((moduleId) => {
-    const module = mockAgentModules.find((m) => m.id === moduleId);
+    const modData = mockAgentModules.find((m) => m.id === moduleId);
     const roles = ["Owner", "Contributor", "Reviewer"];
     return {
       moduleId,
-      moduleName: module?.name || "Unknown Module",
+      moduleName: modData?.name || "Unknown Module",
       role: roles[Math.floor(Math.random() * roles.length)],
     };
   });

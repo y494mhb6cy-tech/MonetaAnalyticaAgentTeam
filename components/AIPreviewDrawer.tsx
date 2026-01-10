@@ -160,6 +160,17 @@ export function AIPreviewDrawer() {
     }
   }, []);
 
+  // ESC key to close
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && aiPanelOpen) {
+        setAiPanelOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [aiPanelOpen, setAiPanelOpen]);
+
   if (!aiPanelOpen) {
     return null;
   }

@@ -2,70 +2,127 @@
 
 A dark, executive MVP for MAOS (Moneta Analytica Agent Team) Task Rabbits and Chains. Includes a run console, builders, artifacts archive, and branded DOCX/PDF output.
 
-## Local Development
+## Quick Start
 
 ```bash
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
+
+# Open http://localhost:3000
 ```
 
-## Build
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot reload |
+| `npm run build` | Build for production |
+| `npm run build:clean` | Clean `.next` folder and build (used by CI) |
+| `npm start` | Start production server |
+| `npm run lint` | Run ESLint checks |
+| `npm run test` | Run Jest test suite |
+
+## Testing
 
 ```bash
-npm run build
-npm start
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test -- --watch
 ```
 
-## Environment Variables
+The test suite includes:
+- Unit tests for UI components (Button, Modal, Sidebar, etc.)
+- Integration tests for interactivity flows
+- 21 tests total with Jest + React Testing Library
 
-- `OPENAI_API_KEY` (optional) — when set, the app calls OpenAI. When missing, the app uses a deterministic mock response.
+## Deployment (Netlify)
 
-## Netlify
-
-- Build command: `npm run build`
+### Configuration
+The `netlify.toml` is pre-configured:
+- Build command: `npm run build:clean`
 - Publish directory: `.next`
 - Required plugin: `@netlify/plugin-nextjs`
+- Node version: 20
 
-Set environment variables in Netlify **Site settings → Environment variables**.
+### Environment Variables
+Set in Netlify **Site settings → Environment variables**:
+- `OPENAI_API_KEY` (optional) — When set, the app calls OpenAI. When missing, uses deterministic mock responses.
 
-## Redeploy (clear cache)
+### Deploy Commands
+```bash
+# Deploy to Netlify (if CLI installed)
+netlify deploy --build --prod
 
-Use this when you need to force a clean build on Netlify.
+# Force clean deploy via Netlify UI
+# Deploys → Trigger deploy → Clear cache and deploy site
+```
 
-**Trigger a deploy with cache cleared**
+## What's Included in v1 Demo
 
-- Netlify UI: **Deploys → Trigger deploy → Clear cache and deploy site**
-- Netlify CLI: `netlify deploy --build --prod`
+### Core Features
+- **Executive Dashboard** (`/home`) — Key metrics, capacity gauges, team breakdowns, risk alerts
+- **Org Map** (`/map`) — Interactive 120-person org visualization with pan/zoom, touch support
+- **Personnel Directory** (`/personnel`) — Browse human operators with filters and detail panels
+- **Agents View** (`/agents`) — Topology visualization of autonomous modules
+- **Company Tasks** (`/company-tasks`) — Task board with filtering by team/person
 
-**Verify deployment details**
+### UI/UX
+- Mobile-first responsive design (iPhone and up)
+- Bottom navigation on mobile, sidebar on desktop
+- ESC key closes all modals and drawers
+- Touch gestures for map pan/zoom
+- First-time intro experience with skip option
+- Dark theme with optional "deep mode"
 
-- Confirm the deploy hash and published time in **Deploys** (latest deploy row shows the hash and timestamp).
-- Expected build command: `npm run build:clean`
-- Publish directory: `.next` with `@netlify/plugin-nextjs`
+### Data
+- Demo seeded with 120 personnel across 5 departments
+- 8 agent modules with metrics
+- Realistic company tasks with revenue attribution
+- State persists to localStorage
 
-## How to use MAOS (Map, Personnel, Agents)
+## What's Intentionally Excluded
 
-- Open `/personnel` to browse human operators. Use search, team/status filters, and capacity ranges to refine the list.
-- Open `/agents` to browse autonomous modules. Use search, module/status filters, and utilization ranges to refine the list.
-- Select any row to open the right-side detail panel with full schema details and recent activity.
-- Click **View on map** to jump to `/map`, center on that node, and highlight it.
-- Use **Add new** on either list page to create a mock record (persisted to localStorage).
-- On `/map`, toggle **Connect Mode** and click a Personnel node, then an Agent node, to create a connection.
-- Hover nodes to see metadata and weekly metrics; click a node to open its detail drawer.
-- Toggle **Live overlays** to show the status pills near nodes.
-- Drag nodes freely to reposition them; use **Clear layout / Reset positions** if nodes drift off-screen.
-- State persists under `maos_personnel_v2`, `maos_agents_v2`, and `maos_map_state_v2`.
+- Real-time data sync (localStorage only)
+- User authentication
+- Production database integration
+- Task editing (read-only demo)
+- Document generation (stubs only in demo)
 
-## How to use AI Preview
+## Tech Stack
 
-- Click **AI Preview** in the top bar to open the right-side AI drawer anywhere.
-- From a Personnel or Agent detail panel, click **AI Preview** to launch with that entity pre-selected.
-- Toggle **Use context** to include the selected entity, tasks, and connections summary in the prompt.
-- Use the templates to fill a prompt quickly, then click **Run** to generate a response.
-- If `OPENAI_API_KEY` is set, MAOS uses the live model; otherwise it shows a deterministic mock response.
+- **Framework**: Next.js 14.2 (App Router)
+- **Language**: TypeScript 5.4
+- **Styling**: Tailwind CSS 3.4 with custom theme
+- **State**: React Context API with localStorage persistence
+- **Testing**: Jest + React Testing Library
+- **Deployment**: Netlify with @netlify/plugin-nextjs
+
+## Project Structure
+
+```
+/app                    # Next.js App Router pages
+  /home                 # Executive dashboard
+  /map                  # Org map visualization
+  /personnel            # Personnel directory
+  /agents               # Agents topology
+  /api                  # API routes (tasks, AI, artifacts)
+/components             # React components
+/lib                    # Business logic and utilities
+  maos-store.tsx        # React Context store
+  maos-types.ts         # TypeScript types
+  maos-seed.ts          # Demo data generators
+/__tests__              # Jest test files
+/data                   # Seed data files
+```
 
 ## Notes
 
-- Task Rabbits, Chains, Runs, and Artifacts are stored in a JSON store under `/tmp` at runtime with a seed file committed in `data/seed.json`.
-- Deep Mode is disabled by default. Enable it in **Settings** before running a deep task.
-- DOCX and PDF outputs are generated server-side with MAOS branding.
+- State persists under `maos_personnel_v2`, `maos_agents_v2`, `maos_map_state_v2`
+- Reset demo data by clearing localStorage or using the Settings page
+- Deep Mode is disabled by default (enable in Settings)
+- AI Preview uses OpenAI if `OPENAI_API_KEY` is set, otherwise shows mock responses
