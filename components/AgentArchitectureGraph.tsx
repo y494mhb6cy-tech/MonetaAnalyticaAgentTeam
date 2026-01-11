@@ -8,6 +8,9 @@ import type {
   AgentDepartment,
 } from "@/lib/mockData";
 
+// Animation constants (matching OrgMapCanvas)
+const ROTATION_SPEED = 0.00005; // Very slow rotation speed
+
 interface AgentArchitectureGraphProps {
   departments: AgentDepartment[];
   modules: AgentModule[];
@@ -23,6 +26,8 @@ interface GraphNode {
   data: AgentModule | AgentNode;
   x: number;
   y: number;
+  baseX: number; // Original position for rotation
+  baseY: number; // Original position for rotation
   vx: number;
   vy: number;
   radius: number;
@@ -47,6 +52,10 @@ export function AgentArchitectureGraph({
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
 
+  // Animation refs for rotation (matching OrgMapCanvas pattern)
+  const rotationRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+
   // Initialize graph layout
   useEffect(() => {
     const nodes: GraphNode[] = [];
@@ -57,12 +66,17 @@ export function AgentArchitectureGraph({
       const angle = (idx / modules.length) * Math.PI * 2;
       const radius = 200;
 
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+
       nodes.push({
         id: module.id,
         type: "module",
         data: module,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
+        x,
+        y,
+        baseX: x,
+        baseY: y,
         vx: 0,
         vy: 0,
         radius: 40,
@@ -71,7 +85,7 @@ export function AgentArchitectureGraph({
     });
 
     // Create agent nodes (positioned near their modules)
-    agents.forEach((agent, idx) => {
+    agents.forEach((agent) => {
       const parentModule = nodes.find((n) => n.id === agent.moduleId);
       if (!parentModule) return;
 
@@ -84,12 +98,17 @@ export function AgentArchitectureGraph({
       const angle = (agentIdx / totalAgents) * Math.PI * 2;
       const distance = 80;
 
+      const x = parentModule.x + Math.cos(angle) * distance;
+      const y = parentModule.y + Math.sin(angle) * distance;
+
       nodes.push({
         id: agent.id,
         type: "agent",
         data: agent,
-        x: parentModule.x + Math.cos(angle) * distance,
-        y: parentModule.y + Math.sin(angle) * distance,
+        x,
+        y,
+        baseX: x,
+        baseY: y,
         vx: 0,
         vy: 0,
         radius: 16,
@@ -116,7 +135,7 @@ export function AgentArchitectureGraph({
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
-  // Render graph
+  // Render graph with rotation animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -124,7 +143,37 @@ export function AgentArchitectureGraph({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const render = () => {
+    const render = (timestamp: number) => {
+      // Calculate delta time for smooth animation
+      const dt = timestamp - lastTimeRef.current;
+      lastTimeRef.current = timestamp;
+
+      // Update rotation for agent layer (slow, continuous like OrgMapCanvas)
+      rotationRef.current += ROTATION_SPEED * dt;
+
+      // Update agent positions based on rotation around their parent modules
+      nodesRef.current.forEach((node) => {
+        if (node.type === "agent") {
+          // Find parent module for this agent
+          const agentData = node.data as AgentNode;
+          const parentModule = nodesRef.current.find(
+            (n) => n.type === "module" && n.id === agentData.moduleId
+          );
+
+          if (parentModule) {
+            // Calculate relative position from module center
+            const relX = node.baseX - parentModule.baseX;
+            const relY = node.baseY - parentModule.baseY;
+
+            // Apply rotation around the module
+            const cos = Math.cos(rotationRef.current);
+            const sin = Math.sin(rotationRef.current);
+            node.x = parentModule.x + (relX * cos - relY * sin);
+            node.y = parentModule.y + (relX * sin + relY * cos);
+          }
+        }
+      });
+
       // Clear canvas
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
       ctx.save();
@@ -133,7 +182,7 @@ export function AgentArchitectureGraph({
       ctx.translate(dimensions.width / 2 + transform.x, dimensions.height / 2 + transform.y);
       ctx.scale(transform.scale, transform.scale);
 
-      // Render dependencies (edges)
+      // Render dependencies (edges) - update positions with current node x,y
       ctx.strokeStyle = "rgba(124, 196, 255, 0.3)";
       ctx.lineWidth = 1.5;
 
@@ -276,7 +325,7 @@ export function AgentArchitectureGraph({
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameRef.current = requestAnimationFrame(render);
 
     return () => {
       if (animationFrameRef.current) {
