@@ -10,6 +10,27 @@ import type {
 
 // Animation constants (matching OrgMapCanvas)
 const ROTATION_SPEED = 0.00005; // Very slow rotation speed
+const PARTICLE_COUNT = 80; // Number of background particles
+const PARTICLE_ROTATION_SPEED = 0.00003; // Slightly slower than main elements
+
+// Display mode types
+type NodeDisplayMode = "all" | "modules" | "agents";
+type DensityMode = "compact" | "comfortable";
+type LabelMode = "off" | "key" | "all";
+
+// Particle type for background animation
+interface Particle {
+  x: number;
+  y: number;
+  baseX: number;
+  baseY: number;
+  radius: number;
+  color: string;
+  alpha: number;
+  speed: number;
+  angle: number;
+  orbitRadius: number;
+}
 
 interface AgentArchitectureGraphProps {
   departments: AgentDepartment[];
@@ -18,6 +39,10 @@ interface AgentArchitectureGraphProps {
   dependencies: AgentDependency[];
   onModuleClick?: (module: AgentModule) => void;
   onAgentClick?: (agent: AgentNode) => void;
+  nodeDisplay?: NodeDisplayMode;
+  density?: DensityMode;
+  labelMode?: LabelMode;
+  showDependencies?: boolean;
 }
 
 interface GraphNode {
@@ -41,6 +66,10 @@ export function AgentArchitectureGraph({
   dependencies,
   onModuleClick,
   onAgentClick,
+  nodeDisplay = "all",
+  density = "comfortable",
+  labelMode = "key",
+  showDependencies = true,
 }: AgentArchitectureGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,12 +78,21 @@ export function AgentArchitectureGraph({
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const animationFrameRef = useRef<number>();
   const nodesRef = useRef<GraphNode[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
 
   // Animation refs for rotation (matching OrgMapCanvas pattern)
   const rotationRef = useRef<number>(0);
+  const particleRotationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+
+  // Density-based sizing
+  const sizeMultiplier = density === "compact" ? 0.75 : 1;
+  const moduleRadius = 40 * sizeMultiplier;
+  const agentRadius = 16 * sizeMultiplier;
+  const layoutRadius = density === "compact" ? 160 : 200;
+  const agentDistance = density === "compact" ? 60 : 80;
 
   // Initialize graph layout
   useEffect(() => {
@@ -64,10 +102,9 @@ export function AgentArchitectureGraph({
     modules.forEach((module, idx) => {
       const dept = departments.find((d) => d.id === module.departmentId);
       const angle = (idx / modules.length) * Math.PI * 2;
-      const radius = 200;
 
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
+      const x = Math.cos(angle) * layoutRadius;
+      const y = Math.sin(angle) * layoutRadius;
 
       nodes.push({
         id: module.id,
@@ -79,7 +116,7 @@ export function AgentArchitectureGraph({
         baseY: y,
         vx: 0,
         vy: 0,
-        radius: 40,
+        radius: moduleRadius,
         color: dept?.color || "#666",
       });
     });
@@ -96,10 +133,9 @@ export function AgentArchitectureGraph({
 
       // Position agents in a circle around their module
       const angle = (agentIdx / totalAgents) * Math.PI * 2;
-      const distance = 80;
 
-      const x = parentModule.x + Math.cos(angle) * distance;
-      const y = parentModule.y + Math.sin(angle) * distance;
+      const x = parentModule.baseX + Math.cos(angle) * agentDistance;
+      const y = parentModule.baseY + Math.sin(angle) * agentDistance;
 
       nodes.push({
         id: agent.id,
@@ -111,13 +147,55 @@ export function AgentArchitectureGraph({
         baseY: y,
         vx: 0,
         vy: 0,
-        radius: 16,
+        radius: agentRadius,
         color: dept?.color || "#666",
       });
     });
 
     nodesRef.current = nodes;
-  }, [modules, agents, departments]);
+  }, [modules, agents, departments, moduleRadius, agentRadius, layoutRadius, agentDistance]);
+
+  // Initialize background particles
+  useEffect(() => {
+    const particles: Particle[] = [];
+    const colors = [
+      "#3b82f6", // blue
+      "#8b5cf6", // purple
+      "#06b6d4", // cyan
+      "#10b981", // emerald
+      "#f59e0b", // amber
+      "#ef4444", // red (sparse)
+    ];
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      // Distribute particles in a wider area
+      const angle = (i / PARTICLE_COUNT) * Math.PI * 2 + Math.random() * 0.5;
+      const orbitRadius = 100 + Math.random() * 350; // Various orbit distances
+
+      const x = Math.cos(angle) * orbitRadius;
+      const y = Math.sin(angle) * orbitRadius;
+
+      // Bias towards cooler colors, occasional warm
+      const colorIdx = Math.random() < 0.8
+        ? Math.floor(Math.random() * 4)
+        : Math.floor(Math.random() * colors.length);
+
+      particles.push({
+        x,
+        y,
+        baseX: x,
+        baseY: y,
+        radius: 2 + Math.random() * 4,
+        color: colors[colorIdx],
+        alpha: 0.2 + Math.random() * 0.4,
+        speed: 0.5 + Math.random() * 1.5,
+        angle,
+        orbitRadius,
+      });
+    }
+
+    particlesRef.current = particles;
+  }, []);
 
   // Handle resize
   useEffect(() => {
@@ -150,6 +228,14 @@ export function AgentArchitectureGraph({
 
       // Update rotation for agent layer (slow, continuous like OrgMapCanvas)
       rotationRef.current += ROTATION_SPEED * dt;
+      particleRotationRef.current += PARTICLE_ROTATION_SPEED * dt;
+
+      // Update particle positions based on rotation
+      particlesRef.current.forEach((particle) => {
+        const newAngle = particle.angle + particleRotationRef.current * particle.speed;
+        particle.x = Math.cos(newAngle) * particle.orbitRadius;
+        particle.y = Math.sin(newAngle) * particle.orbitRadius;
+      });
 
       // Update agent positions based on rotation around their parent modules
       nodesRef.current.forEach((node) => {
@@ -174,55 +260,111 @@ export function AgentArchitectureGraph({
         }
       });
 
-      // Clear canvas
-      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+      // Clear canvas with dark background
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
       ctx.save();
 
       // Apply transform
       ctx.translate(dimensions.width / 2 + transform.x, dimensions.height / 2 + transform.y);
       ctx.scale(transform.scale, transform.scale);
 
-      // Render dependencies (edges) - update positions with current node x,y
-      ctx.strokeStyle = "rgba(124, 196, 255, 0.3)";
-      ctx.lineWidth = 1.5;
+      // Draw background particles first (behind everything)
+      particlesRef.current.forEach((particle) => {
+        // Draw glow effect
+        const gradient = ctx.createRadialGradient(
+          particle.x,
+          particle.y,
+          0,
+          particle.x,
+          particle.y,
+          particle.radius * 3
+        );
+        gradient.addColorStop(0, particle.color + Math.floor(particle.alpha * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(0.5, particle.color + Math.floor(particle.alpha * 128).toString(16).padStart(2, '0'));
+        gradient.addColorStop(1, particle.color + "00");
 
-      dependencies.forEach((dep) => {
-        const fromNode = nodesRef.current.find((n) => n.id === dep.fromId);
-        const toNode = nodesRef.current.find((n) => n.id === dep.toId);
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius * 3, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
 
-        if (fromNode && toNode) {
-          ctx.beginPath();
-          ctx.moveTo(fromNode.x, fromNode.y);
-          ctx.lineTo(toNode.x, toNode.y);
-          ctx.strokeStyle = `rgba(124, 196, 255, ${dep.weight * 0.5})`;
-          ctx.lineWidth = dep.weight * 3;
-          ctx.stroke();
-
-          // Draw arrow
-          const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
-          const arrowSize = 8;
-          const arrowX = toNode.x - Math.cos(angle) * (toNode.radius + 5);
-          const arrowY = toNode.y - Math.sin(angle) * (toNode.radius + 5);
-
-          ctx.beginPath();
-          ctx.moveTo(arrowX, arrowY);
-          ctx.lineTo(
-            arrowX - arrowSize * Math.cos(angle - Math.PI / 6),
-            arrowY - arrowSize * Math.sin(angle - Math.PI / 6)
-          );
-          ctx.lineTo(
-            arrowX - arrowSize * Math.cos(angle + Math.PI / 6),
-            arrowY - arrowSize * Math.sin(angle + Math.PI / 6)
-          );
-          ctx.closePath();
-          ctx.fillStyle = `rgba(124, 196, 255, ${dep.weight * 0.5})`;
-          ctx.fill();
-        }
+        // Draw core particle
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = particle.color + Math.floor(particle.alpha * 255).toString(16).padStart(2, '0');
+        ctx.fill();
       });
 
+      // Filter nodes based on display mode
+      const visibleNodes = nodesRef.current.filter((node) => {
+        if (nodeDisplay === "all") return true;
+        if (nodeDisplay === "modules") return node.type === "module";
+        if (nodeDisplay === "agents") return node.type === "agent";
+        return true;
+      });
+
+      // Render dependencies (edges) - only if enabled and nodes visible
+      if (showDependencies) {
+        ctx.strokeStyle = "rgba(124, 196, 255, 0.3)";
+        ctx.lineWidth = 1.5;
+
+        dependencies.forEach((dep) => {
+          const fromNode = visibleNodes.find((n) => n.id === dep.fromId);
+          const toNode = visibleNodes.find((n) => n.id === dep.toId);
+
+          if (fromNode && toNode) {
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.strokeStyle = `rgba(124, 196, 255, ${dep.weight * 0.5})`;
+            ctx.lineWidth = dep.weight * 3;
+            ctx.stroke();
+
+            // Draw arrow
+            const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+            const arrowSize = 8;
+            const arrowX = toNode.x - Math.cos(angle) * (toNode.radius + 5);
+            const arrowY = toNode.y - Math.sin(angle) * (toNode.radius + 5);
+
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(
+              arrowX - arrowSize * Math.cos(angle - Math.PI / 6),
+              arrowY - arrowSize * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+              arrowX - arrowSize * Math.cos(angle + Math.PI / 6),
+              arrowY - arrowSize * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = `rgba(124, 196, 255, ${dep.weight * 0.5})`;
+            ctx.fill();
+          }
+        });
+      }
+
       // Render nodes
-      nodesRef.current.forEach((node) => {
+      visibleNodes.forEach((node) => {
         const isHovered = hoveredNode?.id === node.id;
+
+        // Draw node glow for added visual effect
+        if (node.type === "module" || isHovered) {
+          const glowGradient = ctx.createRadialGradient(
+            node.x,
+            node.y,
+            node.radius,
+            node.x,
+            node.y,
+            node.radius * 2
+          );
+          glowGradient.addColorStop(0, node.color + "40");
+          glowGradient.addColorStop(1, node.color + "00");
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius * 2, 0, Math.PI * 2);
+          ctx.fillStyle = glowGradient;
+          ctx.fill();
+        }
 
         // Draw node circle
         ctx.beginPath();
@@ -274,20 +416,26 @@ export function AgentArchitectureGraph({
           ctx.stroke();
         }
 
-        // Draw label
-        ctx.fillStyle = "#f1f5f9";
-        ctx.font = node.type === "module" ? "bold 12px sans-serif" : "11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        // Draw label based on labelMode
+        const shouldShowLabel =
+          labelMode === "all" ||
+          (labelMode === "key" && (node.type === "module" || isHovered || transform.scale > 1.2)) ||
+          (labelMode === "off" && isHovered);
 
-        const label = node.data.name;
-        const maxWidth = node.radius * 2.5;
+        if (shouldShowLabel) {
+          ctx.fillStyle = "#f1f5f9";
+          ctx.font = node.type === "module" ? "bold 12px sans-serif" : "11px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
 
-        if (node.type === "module") {
-          ctx.fillText(label, node.x, node.y, maxWidth);
-        } else if (isHovered || transform.scale > 1.2) {
-          // Only show agent labels when zoomed or hovered
-          ctx.fillText(label, node.x, node.y + node.radius + 12, maxWidth);
+          const label = node.data.name;
+          const maxWidth = node.radius * 2.5;
+
+          if (node.type === "module") {
+            ctx.fillText(label, node.x, node.y, maxWidth);
+          } else {
+            ctx.fillText(label, node.x, node.y + node.radius + 12, maxWidth);
+          }
         }
       });
 
@@ -332,7 +480,7 @@ export function AgentArchitectureGraph({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [dimensions, dependencies, hoveredNode, transform]);
+  }, [dimensions, dependencies, hoveredNode, transform, nodeDisplay, labelMode, showDependencies]);
 
   // Mouse handlers
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
