@@ -27,11 +27,19 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Grid3x3,
+  Eye,
+  GitBranch,
 } from "lucide-react";
 import { ViewToggle } from "@/components/ViewToggle";
 import { BuildVersion } from "@/components/BuildVersion";
 import AgentLegend from "@/components/AgentLegend";
 import clsx from "clsx";
+
+// Display mode types
+type NodeDisplayMode = "all" | "modules" | "agents";
+type DensityMode = "compact" | "comfortable";
+type LabelMode = "off" | "key" | "all";
 
 // Dynamic import for graph component to avoid SSR issues
 const AgentArchitectureGraph = dynamic(
@@ -60,11 +68,18 @@ export default function AgentArchitecturePage() {
   const [selectedStatus, setSelectedStatus] = useState<AgentStatus | "">("");
   const [selectedCriticality, setSelectedCriticality] = useState<AgentCriticality | "">("");
 
+  // Display controls (matching /map parity)
+  const [nodeDisplay, setNodeDisplay] = useState<NodeDisplayMode>("all");
+  const [density, setDensity] = useState<DensityMode>("comfortable");
+  const [labelMode, setLabelMode] = useState<LabelMode>("key");
+  const [showDependencies, setShowDependencies] = useState(true);
+
   // Selection state
   const [selectedNode, setSelectedNode] = useState<AgentModule | AgentNode | null>(null);
 
   // Panel state
   const [showFilters, setShowFilters] = useState(false);
+  const [showDisplayControls, setShowDisplayControls] = useState(false);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -212,6 +227,10 @@ export default function AgentArchitecturePage() {
               dependencies={filteredDependencies}
               onModuleClick={handleModuleClick}
               onAgentClick={handleAgentClick}
+              nodeDisplay={nodeDisplay}
+              density={density}
+              labelMode={labelMode}
+              showDependencies={showDependencies}
             />
           )}
         </div>
@@ -221,7 +240,7 @@ export default function AgentArchitecturePage() {
           {/* View Toggle */}
           <ViewToggle />
 
-          {/* Filter Controls */}
+          {/* Control Buttons */}
           <div className="flex items-center gap-2 rounded-lg bg-slate-900/90 p-2 backdrop-blur-sm border border-slate-700/50">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -237,6 +256,34 @@ export default function AgentArchitecturePage() {
               {hasActiveFilters && (
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               )}
+            </button>
+            <button
+              onClick={() => setShowDisplayControls(!showDisplayControls)}
+              className={clsx(
+                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-all",
+                showDisplayControls
+                  ? "bg-sky-600 text-white"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              )}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Display
+            </button>
+          </div>
+
+          {/* Dependencies Toggle */}
+          <div className="flex items-center gap-2 rounded-lg bg-slate-900/90 p-2 backdrop-blur-sm border border-slate-700/50">
+            <button
+              onClick={() => setShowDependencies(!showDependencies)}
+              className={clsx(
+                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-all",
+                showDependencies
+                  ? "bg-sky-600 text-white"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              )}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              Flow Trace
             </button>
           </div>
 
@@ -363,6 +410,133 @@ export default function AgentArchitecturePage() {
                 Clear All Filters
               </button>
             )}
+          </div>
+        )}
+
+        {/* Display controls panel (top-left, below control bar) */}
+        {showDisplayControls && (
+          <div className={clsx(
+            "absolute left-4 z-20 space-y-2",
+            showFilters ? "top-[420px]" : "top-36",
+            mobileControlsOpen ? "block" : "hidden md:block"
+          )}>
+            {/* Node Display toggle */}
+            <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1">
+                <Layers className="w-3 h-3" />
+                Node Display
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setNodeDisplay("all")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    nodeDisplay === "all"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setNodeDisplay("modules")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    nodeDisplay === "modules"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Modules
+                </button>
+                <button
+                  onClick={() => setNodeDisplay("agents")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    nodeDisplay === "agents"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Agents
+                </button>
+              </div>
+            </div>
+
+            {/* Density toggle */}
+            <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1">
+                <Grid3x3 className="w-3 h-3" />
+                Density
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setDensity("compact")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    density === "compact"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Compact
+                </button>
+                <button
+                  onClick={() => setDensity("comfortable")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    density === "comfortable"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Comfortable
+                </button>
+              </div>
+            </div>
+
+            {/* Label mode toggle */}
+            <div className="rounded-lg bg-slate-900/90 backdrop-blur-sm border border-slate-700/50 p-2">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-1 flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                Labels
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setLabelMode("off")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    labelMode === "off"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Off
+                </button>
+                <button
+                  onClick={() => setLabelMode("key")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    labelMode === "key"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  Key
+                </button>
+                <button
+                  onClick={() => setLabelMode("all")}
+                  className={clsx(
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    labelMode === "all"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  )}
+                >
+                  All
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
