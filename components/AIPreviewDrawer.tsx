@@ -5,6 +5,8 @@ import clsx from "clsx";
 import { buildContextSummary, buildMockResponse, type AiContextSnapshot } from "../lib/ai-mock";
 import { useMaosStore } from "../lib/maos-store";
 import { Button } from "./ui";
+import { logInteraction } from "../lib/action-helper";
+import { logEvent } from "../lib/audit-logger";
 
 const templates = [
   "Summarize today’s priorities",
@@ -123,6 +125,15 @@ export function AIPreviewDrawer() {
     setIsRunning(true);
     setNote(null);
     setMode(null);
+    setResponse(""); // Clear previous response
+    
+    // Log the action
+    logEvent('api_call', 'AIPreviewDrawer', 'RunPrompt', {
+      promptLength: trimmed.length,
+      hasContext: useContext,
+      contextEntity: aiContext?.kind,
+    });
+
     const payload = {
       prompt: trimmed,
       context: useContext ? contextSummary : ""
@@ -140,13 +151,27 @@ export function AIPreviewDrawer() {
       setMode(data.mode);
       setNote(data.note ?? null);
       startStreaming(data.response);
+      
+      // Log success
+      logEvent('api_call', 'AIPreviewDrawer', 'RunPrompt', {
+        mode: data.mode,
+        responseLength: data.response.length,
+      }, true);
     } catch (error) {
       const fallback = buildMockResponse(trimmed, useContext ? contextSummary : "");
       setMode("mock");
       setNote("API unavailable. Showing a local mock response.");
       startStreaming(fallback);
+      
+      // Log error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logEvent('error', 'AIPreviewDrawer', 'RunPrompt', {
+        error: errorMessage,
+      }, false, errorMessage);
+    } finally {
+      setIsRunning(false);
     }
-  }, [contextSummary, prompt, startStreaming, useContext]);
+  }, [contextSummary, prompt, startStreaming, useContext, aiContext]);
 
   useEffect(() => {
     if (aiPanelOpen) {
@@ -184,7 +209,14 @@ export function AIPreviewDrawer() {
             <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">AI Preview</div>
             <div className="text-sm text-[color:var(--text)]">MAOS embedded assistant</div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setAiPanelOpen(false)}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              logInteraction('AIPreviewDrawer', 'Close');
+              setAiPanelOpen(false);
+            }}
+          >
             Close
           </Button>
         </div>
@@ -200,7 +232,10 @@ export function AIPreviewDrawer() {
                     "rounded-full border border-[color:var(--border)] px-3 py-1 text-xs text-[color:var(--text)] transition",
                     "bg-[var(--panel2)] hover:bg-[var(--hover)]"
                   )}
-                  onClick={() => setPrompt(template)}
+                  onClick={() => {
+                    logInteraction('AIPreviewDrawer', 'SelectTemplate', { template });
+                    setPrompt(template);
+                  }}
                 >
                   {template}
                 </button>
@@ -227,8 +262,20 @@ export function AIPreviewDrawer() {
             </label>
             <span>{contextSnapshot?.entityName ? `Using ${contextSnapshot.entityName}` : "No entity selected"}</span>
           </div>
-          <Button onClick={runPrompt} disabled={isRunning || !prompt.trim()} className="w-full" size="lg">
-            {isRunning ? "Running…" : "Run"}
+          <Button 
+            onClick={runPrompt} 
+            disabled={isRunning || !prompt.trim()} 
+            className="w-full" 
+            size="lg"
+          >
+            {isRunning ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Running…
+              </span>
+            ) : (
+              "Run"
+            )}
           </Button>
           <div className="rounded-xl border border-[color:var(--border)] bg-[var(--panel2)] p-4 text-xs text-[color:var(--muted)]">
             <div className="flex items-center justify-between">

@@ -6,10 +6,11 @@ import { CommandPalette } from "../components/CommandPalette";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { TopBar } from "../components/TopBar";
 import { AIPreviewDrawer } from "../components/AIPreviewDrawer";
+import { ToastContainer } from "../components/Toast";
 
 export const metadata: Metadata = {
-  title: "MAOS — Moneta Analytica Agent Team",
-  description: "MAOS (Moneta Analytica Agent Team) Agents MVP",
+  title: "MAOS — Real-time Operating System",
+  description: "MAOS is a real-time operating system that gives leadership a bird's-eye view of an organization's capacity, workload, and outcomes. It clearly separates revenue-producing work from administrative drag, showing where time, people, and effort are actually being spent.",
 };
 
 export const viewport = {
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <CommandPalette />
               <AIPreviewDrawer />
+              <ToastContainer />
             </div>
           </MaosProvider>
         </ThemeProvider>
