@@ -33,6 +33,7 @@ import {
 } from "../../lib/executive-metrics";
 import { BuildVersion } from "../../components/BuildVersion";
 import MaosIntro from "../../components/MaosIntro";
+import { logInteraction } from "../../lib/action-helper";
 
 // Animated number component
 function AnimatedNumber({ value, duration = 1000 }: { value: number; duration?: number }) {
@@ -250,6 +251,26 @@ function TeamCard({ team, rank }: { team: TeamBreakdown; rank: number }) {
 
 // Risk alert
 function RiskAlert({ risk }: { risk: RiskItem }) {
+  const handleAction = () => {
+    // Log the action
+    logInteraction('RiskAlert', risk.actionLabel, { riskId: risk.id, severity: risk.severity });
+
+    // Navigate to relevant page based on risk type
+    if (risk.id.includes('team') || risk.id.includes('capacity')) {
+      window.location.href = '/map';
+    } else if (risk.id.includes('agent')) {
+      window.location.href = '/agents';
+    } else if (risk.id.includes('task') || risk.id.includes('blocked')) {
+      window.location.href = '/company-tasks';
+    } else {
+      // Default: show info toast
+      if (typeof window !== 'undefined') {
+        const { showToast } = require('../../components/Toast');
+        showToast(`Risk: ${risk.title} - ${risk.description}`, 'info', 5000);
+      }
+    }
+  };
+
   return (
     <div
       className="flex items-start gap-3 p-3 rounded-lg border bg-[var(--panel)]"
@@ -264,9 +285,8 @@ function RiskAlert({ risk }: { risk: RiskItem }) {
         <div className="text-xs text-slate-500 mt-0.5">{risk.description}</div>
       </div>
       <button
-        disabled
-        title="Coming soon"
-        className="text-xs text-slate-500 flex-shrink-0 cursor-not-allowed opacity-60"
+        onClick={handleAction}
+        className="text-xs text-[color:var(--accent)] flex-shrink-0 hover:underline transition-colors"
       >
         {risk.actionLabel}
       </button>
@@ -340,7 +360,7 @@ export default function ExecutiveHomePage() {
                 MAOS
               </h1>
               <p className="text-sm text-slate-500 mt-0.5">
-                Organizational Operating System
+                Real-time operating system for organizational clarity
               </p>
             </div>
             <div className="flex items-center gap-4">

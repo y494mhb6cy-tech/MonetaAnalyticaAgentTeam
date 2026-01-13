@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { X, Calendar, User, Users, TrendingUp, Clock, DollarSign, Phone, FileText, AlertCircle, Briefcase, Sparkles } from "lucide-react";
 import type { CompanyTask, CompanyTaskType } from "@/lib/maos-types";
+import { logInteraction } from "../lib/action-helper";
 
 interface TaskDetailsDrawerProps {
   task: CompanyTask | null;
@@ -266,7 +267,13 @@ export default function TaskDetailsDrawer({
                           </div>
                         </div>
                         <button
-                          onClick={() => onRunAgent?.(agentId)}
+                          onClick={() => {
+                            // Log the action
+                            logInteraction('TaskDetailsDrawer', 'RunAgent', { agentId, taskId: task.id });
+                            
+                            // Call the original handler if provided
+                            onRunAgent?.(agentId);
+                          }}
                           className="flex-none px-3 py-1 text-xs font-medium text-purple-400 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 transition-colors"
                         >
                           Preview

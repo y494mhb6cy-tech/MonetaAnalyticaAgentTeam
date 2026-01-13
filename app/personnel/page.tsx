@@ -214,7 +214,7 @@ function PersonnelContent() {
       <div className="space-y-6">
         <PageHeader
           title="Personnel"
-          subtitle="Human operators running MAOS (Moneta Analytica Agent Team)."
+          subtitle="Human teams and AI agents managed together—creating layered visibility, due diligence, and decision-making at every level."
           actions={<Button onClick={handleAdd}>Add new</Button>}
         />
 

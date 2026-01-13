@@ -206,7 +206,7 @@ export default function MaosIntro({ onComplete }: MaosIntroProps) {
             MAOS
           </h1>
           <p id="maos-intro-description" className="text-xl text-slate-400">
-            <Typewriter text="Your organization, operationalized." delay={60} />
+            <Typewriter text="Real-time operating system for organizational clarity." delay={60} />
           </p>
         </div>
 
